@@ -36,7 +36,7 @@ function BaseTest:run_all_tests(opts)
   local method_names_set = {}
 
   while cls ~= nil do
-    -- metatables' indexes must be tables for 
+    -- metatables' indexes must be tables for
     local index = rawget(cls, '__index')
     if type(index) ~= 'table' then break end
 
