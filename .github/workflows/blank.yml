@@ -29,12 +29,19 @@ jobs:
       - name: Run a multi-line script
         timeout-minutes: 5
         run: |
+          echo '##[section]Installing luarocks & vert'
           apt-get install -y luarocks
           git clone https://github.com/fcr--/vert.git
           cd vert; luarocks --local build; cd ..
-          echo === luajit ===
+          
+          echo '##[section]Test using luajit'
+          echo '##[group]Install luajit'
           ~/.luarocks/bin/vert init --lua-source=luajit venv-luajit
+          echo '##[endgroup]'
           . venv-luajit/bin/activate; lua test/tests.lua; deactivate
-          echo === lua5.3 ===
+          
+          echo '##[section]Test using luajit'
+          echo '##[group]Install lua5.3'
           ~/.luarocks/bin/vert init --lua-version=5.3.6 venv-lua5.3
+          echo '##[endgroup]'
           . venv-lua5.3/bin/activate; lua test/tests.lua; deactivate
