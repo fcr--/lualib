@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get install -y luarocks
           git clone https://github.com/fcr--/vert.git
-          cd vert; luarocks --local build; cd ..
+          cd vert; luarocks --local make; cd ..
 
       - name: Test with luajit
         timeout-minutes: 5
