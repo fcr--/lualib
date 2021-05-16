@@ -79,7 +79,7 @@ function BaseTest:run_all_tests(opts)
     table.sort(short_src_list)
 
     if error_count == 0 then
-      print(('\n\27[1;32m%d tests run total, 0 errors!'):format(#results))
+      print(('\n\27[1;32m%d tests run total, 0 errors!\27[0m'):format(#results))
     else
       print(('\n\27[1;31m%d tests run total, %d errors:\27[0m'):format(#results, error_count))
       for _, short_src in ipairs(short_src_list) do
@@ -134,11 +134,23 @@ end
 
 
 -- class method:
-function BaseTest:run_if_main(module_name)
+function BaseTest:run_if_main()
   -- Helper that calls self:run_all_tests if the test file is executed directly.
-  -- should be called with MyTestSubclass:run_if_main(...)
-  if type(package.loaded[module_name]) ~= 'userdata' then
-    self:run_all_tests{}
+  -- Additionally it will make the program exit with an error code if there were failed tests.
+  local function require_was_found()
+    for i = 3, 1000000 do
+      local info = debug.getinfo(i, 'f')
+      if info == nil then return false end -- running as main
+      if info.func == require then return true end -- this is being loaded as a module
+    end
+    error 'Too deeply nested, this probably means run_if_main is broken'
+  end
+
+  -- being called from the main script means require is not in the stack trace
+  if not require_was_found() then
+    for _, res in ipairs(self:run_all_tests{}) do
+      if res.exception then os.exit(1) end
+    end
   end
 end
 
