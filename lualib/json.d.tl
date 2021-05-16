@@ -3,7 +3,7 @@ local record json
     record Object end
     record Nil end
 
-    type JsonValue = string | table | number | boolean | nil
+    type JsonValue = string | {any:JsonValue} | number | boolean | nil
     type string_position = integer
     type wide_char = integer
 
@@ -18,7 +18,7 @@ local record json
         -- can be used to specify when to encode a table as an array:
         is_array: nil | function(value: table, path: {string|number}): boolean
         -- if you want an encoding different than utf-8 (which is a bad idea btw):
-        charset_decoder: nil | function(str: string, string_position: integer): string_position, wide_char
+        charset_decoder: nil | function(str: string, i: string_position): string_position, wide_char
     end
 
     encode_string: function(str: string, opts: EncodeOptions)
