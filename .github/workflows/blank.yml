@@ -25,23 +25,21 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Install luarocks & vert
         timeout-minutes: 5
         run: |
-          echo '##[section]Installing luarocks & vert'
-          apt-get install -y luarocks
+          sudo apt-get install -y luarocks
           git clone https://github.com/fcr--/vert.git
           cd vert; luarocks --local build; cd ..
-          
-          echo '##[section]Test using luajit'
-          echo '##[group]Install luajit'
+
+      - name: Test with luajit
+        timeout-minutes: 5
+        run: |
           ~/.luarocks/bin/vert init --lua-source=luajit venv-luajit
-          echo '##[endgroup]'
           . venv-luajit/bin/activate; lua test/tests.lua; deactivate
-          
-          echo '##[section]Test using luajit'
-          echo '##[group]Install lua5.3'
+
+      - name: Test with lua5.3
+        timeout-minutes: 5
+        run: |
           ~/.luarocks/bin/vert init --lua-version=5.3.6 venv-lua5.3
-          echo '##[endgroup]'
           . venv-lua5.3/bin/activate; lua test/tests.lua; deactivate
