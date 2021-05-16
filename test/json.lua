@@ -18,7 +18,7 @@ function JsonTest:test_number()
 
   self:assert_equal('inf', json.encode(1/0, {allow_invalid_numbers=true}))
   self:assert_equal('-inf', json.encode(-1/0, {allow_invalid_numbers=true}))
-  self:assert_equal('nan', json.encode(0/0, {allow_invalid_numbers=true}))
+  self:assert_equal('nan', json.encode(math.abs(0/0), {allow_invalid_numbers=true}))
 end
 
 
@@ -53,7 +53,7 @@ function JsonTest:test_array()
   t[2][2] = t
   self:assert_equal(false, (pcall(json.encode, t)))
   self:assert_equal(false, (pcall(json.encode, {42, string_key='error'})))
-  self:assert_equal(false, (pcall(json.encode, {1, nil, 3})))
+  self:assert_equal(false, (pcall(json.encode, {1, [3]=3})))
   self:assert_equal('[1,null,3]', json.encode{1, json.Nil, 3})
 end
 

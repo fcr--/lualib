@@ -7,7 +7,7 @@ json.Object = {}
 -- sentinel value that can be used if you want to encode a null value
 json.Nil = setmetatable({}, {__tostring=function()return 'null'end})
 
-local invalid_numeric_strings = {nan=true, inf=true, ['-inf']=true}
+local invalid_numeric_strings = {nan=1, inf=1, ['-inf']=1, ['-nan']=1}
 local replacement_code = 0xfffd -- '�'
 local replacement_char = ('\\u%04x'):format(replacement_code)
 local control_chars = {
@@ -61,13 +61,17 @@ local function encode_object(obj, opts, path, visiting, buffer)
   local depth = #path + 1
   local first = true
   buffer[#buffer + 1] = "{"
-  for k, v in pairs(obj) do
+
+  local keys = {}
+  for k in pairs(obj) do keys[#keys+1] = k end
+  table.sort(keys)
+  for _, k in ipairs(keys) do
     path[depth] = k
     if type(k) == 'string' then
       if first then first=false else buffer[#buffer+1] = "," end
       buffer[#buffer+1] = json.encode_string(k, opts)
       buffer[#buffer+1] = ':'
-      json.encode(v, opts, path, visiting, buffer)
+      json.encode(obj[k], opts, path, visiting, buffer)
     elseif not opts.skip_invalid_keys then
       path[depth] = nil
       error(('invalid key %s found at %s'):format(k, table.concat(path, '.')))
