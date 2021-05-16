@@ -10,6 +10,6 @@ function PegTest:test_string()
   self:assert_deep_equal({grammar=g, pos=1, len=3}, g:parse'foo')
 end
 
-PegTest:run_if_main(...)
+PegTest:run_if_main()
 
 return PegTest

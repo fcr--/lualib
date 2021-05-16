@@ -35,7 +35,7 @@ function OoTest:test_constructor()
 end
 
 
-OoTest:run_if_main(...)
+OoTest:run_if_main()
 
 
 return OoTest

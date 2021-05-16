@@ -18,7 +18,7 @@ Example to start with:
 
     ... -- add more tests
 
-    MyTest:run_if_main(...)
+    MyTest:run_if_main()
 
     return MyTest
 ]]

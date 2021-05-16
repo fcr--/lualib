@@ -78,7 +78,7 @@ function SortedDictTest:test_clone()
 end
 
 
-SortedDictTest:run_if_main(...)
+SortedDictTest:run_if_main()
 
 
 return SortedDictTest

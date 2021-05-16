@@ -9,7 +9,7 @@ local Tests = oo.class(BaseTest)
   :link_class(require 'test.struct.sorteddict')
 
 
-Tests:run_if_main(...)
+Tests:run_if_main()
 
 
 return Tests
