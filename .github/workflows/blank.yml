@@ -32,6 +32,9 @@ jobs:
           apt-get install -y luarocks
           git clone https://github.com/fcr--/vert.git
           cd vert; luarocks --local build; cd ..
+          echo === luajit ===
           ~/.luarocks/bin/vert init --lua-source=luajit venv-luajit
-          . venv/bin/activate
-          lua test/tests.lua
+          . venv-luajit/bin/activate; lua test/tests.lua; deactivate
+          echo === lua5.3 ===
+          ~/.luarocks/bin/vert init --lua-version=5.3.6 venv-lua5.3
+          . venv-lua5.3/bin/activate; lua test/tests.lua; deactivate
