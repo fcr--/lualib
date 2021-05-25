@@ -7,6 +7,7 @@ local Tests = oo.class(BaseTest)
   :link_class(require 'test.peg')
   :link_class(require 'test.json')
   :link_class(require 'test.struct.sorteddict')
+  :link_class(require 'test.struct.sslattice')
 
 
 Tests:run_if_main()
