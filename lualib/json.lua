@@ -1,8 +1,8 @@
 local json = {}
 
 -- Used as metatables to help identify empty cases:
-json.Array = {}
-json.Object = {}
+json.Array = {__jsontype='array'}
+json.Object = {__jsontype='object'}
 
 -- sentinel value that can be used if you want to encode a null value
 json.Nil = setmetatable({}, {__tostring=function()return 'null'end})
@@ -25,10 +25,8 @@ local control_chars = {
 -- default is_array implementation
 function json.is_array(value)
   local mt = getmetatable(value)
-  if mt == json.Array then
-    return true
-  elseif mt == json.Object then
-    return false
+  if type(mt) == 'table' and mt.__jsontype ~= nil then
+    return mt.__jsontype == 'array'
   elseif value[1] then
     return true
   else

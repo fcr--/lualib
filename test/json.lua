@@ -101,4 +101,7 @@ function JsonTest:test_parse()
 end
 
 
+JsonTest:run_if_main()
+
+
 return JsonTest
