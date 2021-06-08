@@ -158,6 +158,7 @@ end
 -- class method:
 function BaseTest:link_class(cls)
   local linked_classes = self._linked_classes
+  assert(type(cls) == 'table')
   if linked_classes then
     linked_classes[#linked_classes + 1] = cls
   else
