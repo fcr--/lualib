@@ -130,7 +130,8 @@ function BigIntTest:test_tostring()
     m{0,0,0,0, 0,0,0,0, 0,0,1, sign=1}:tostring'dec',
     '1461501637330902918203684832716283019655932542976')
   -- raw format:
-  self:assert_equal(bigint.zero:tostring'raw', '')
+  self:assert_equal(bigint.zero:tostring'raw', '\0')
+  self:assert_equal(bigint.zero:tostring('raw', {zero='?'}), '?')
   self:assert_equal(new(42):tostring'raw', '\42')
   self:assert_equal(new(127):tostring'raw', '\127')
   self:assert_equal(new(128):tostring'raw', '\0\128')

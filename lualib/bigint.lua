@@ -353,7 +353,7 @@ function bigint:tostring(fmt, opts)
 
   elseif fmt == 'raw' then
     assert(atombits==16, 'not supported for this atombits value')
-    if self.sign == 0 then return '' end
+    if self.sign == 0 then return opts.zero or '\0' end
     tokens = {}
     if self.sign > 0 then
       local x = self[#self]
