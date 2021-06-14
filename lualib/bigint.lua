@@ -352,6 +352,12 @@ function bigint:tostring(fmt, opts)
     end
 
   elseif fmt == 'raw' then
+    -- same as java's BigInteger toByteArray:
+    -- > Returns a byte array containing the two's-complement representation
+    -- > of this BigInteger. The byte array will be in big-endian byte-order:
+    -- > the most significant byte is in the zeroth element. The array will
+    -- > contain the minimum number of bytes required to represent this
+    -- > BigInteger
     assert(atombits==16, 'not supported for this atombits value')
     if self.sign == 0 then return opts.zero or '\0' end
     tokens = {}
