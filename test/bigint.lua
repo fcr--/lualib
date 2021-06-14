@@ -121,6 +121,30 @@ function BigIntTest:test_tostring()
   self:assert_equal(new(9):tostring('hex', {plus_sign='¿'}), '¿0x9')
   self:assert_equal(new(-1):tostring('hex', {minus_sign='¬'}), '¬0x1')
   self:assert_equal(new(-1):tostring('hex', {prefix='!'}), '-!1')
+  -- dec format:
+  self:assert_equal(new(0):tostring'dec', '0')
+  self:assert_equal(new(1234567890):tostring'dec', '1234567890')
+  self:assert_equal(new(-1234567890):tostring'dec', '-1234567890')
+  self:assert_equal(m{0, 1, sign=1}:tostring'dec', '65536')
+  self:assert_equal(
+    m{0,0,0,0, 0,0,0,0, 0,0,1, sign=1}:tostring'dec',
+    '1461501637330902918203684832716283019655932542976')
+  -- raw format:
+  self:assert_equal(bigint.zero:tostring'raw', '')
+  self:assert_equal(new(42):tostring'raw', '\42')
+  self:assert_equal(new(127):tostring'raw', '\127')
+  self:assert_equal(new(128):tostring'raw', '\0\128')
+  self:assert_equal(new(0x0102):tostring'raw', '\1\2')
+  self:assert_equal(new(0x7fff):tostring'raw', '\127\255')
+  self:assert_equal(new(0x8000):tostring'raw', '\0\128\0')
+  self:assert_equal(new(-1):tostring'raw', '\255')
+  self:assert_equal(new(-2):tostring'raw', '\254')
+  self:assert_equal(new(-128):tostring'raw', '\128')
+  self:assert_equal(new(-129):tostring'raw', '\255\127')
+  self:assert_equal(new(-0x0103):tostring'raw', '\254\253')
+  self:assert_equal(new(-0x8000):tostring'raw', '\128\0')
+  self:assert_equal(new(1234567890):tostring'raw', 'I\150\2\210')
+  self:assert_equal(new(-1234567890):tostring'raw', '\182i\253.')
 end
 
 

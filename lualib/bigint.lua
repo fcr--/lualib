@@ -27,7 +27,7 @@ local atombase = lshift(1, atombits)
 local atommask = atombase - 1
 -- (10000, 4) for atombase 16
 local atomdecmodulo, atomdecexp = 1, 0
-while atomdecmodulo * 10 < atomdecmodulo do
+while atomdecmodulo * 10 < atombase do
   atomdecmodulo = atomdecmodulo * 10
   atomdecexp = atomdecexp + 1
 end
@@ -244,6 +244,8 @@ function bigint:divmodatom(d)
     remainder = tmp % d
   end
   -- we must always ensure: ⌊x/d⌋*d + (x%d) == x
+  -- the modulus is different to the remainder in that it always has the
+  -- same sign as the divisor d.
   if self.sign < 0 and remainder ~= 0 then
     -- add 1 to res' value:
     for i = 1, #res do
@@ -331,11 +333,14 @@ function bigint:rshift(n)
 end
 
 function bigint:tostring(fmt, opts)
+  local tokens
+  local needsreverse = false
   opts = opts or {}
+
   if fmt == 'hex' then
     -- this is way faster than base10
     if self.sign == 0 then return opts.zero or '0' end
-    local tokens = {
+    tokens = {
       self.sign < 0 and (opts.minus_sign or '-') or (opts.plus_sign or ''),
       opts.prefix or '0x',
     }
@@ -345,17 +350,59 @@ function bigint:tostring(fmt, opts)
     for i = #self-1, 1, -1 do
       tokens[#tokens + 1] = hexformat:format(self[i])
     end
-    return table.concat(tokens)
+
   elseif fmt == 'raw' then
-    error 'TODO: implement'
+    assert(atombits==16, 'not supported for this atombits value')
+    if self.sign == 0 then return '' end
+    tokens = {}
+    if self.sign > 0 then
+      local x = self[#self]
+      if x < 128 then
+        tokens[1] = string.char(x)
+      elseif x < 32768 then
+        tokens[1] = string.char(rshift(x, 8), band(x, 255))
+      else  -- we need an extra nil byte :(
+        tokens[1] = string.char(0, rshift(x, 8), band(x, 255))
+      end
+      for i = #self - 1, 1, -1 do
+        x = self[i]
+        tokens[#tokens+1] = string.char(rshift(x, 8), band(x, 255))
+      end
+    else
+      -- the negative case is a bit tricky, we need to reverse the parts
+      needsreverse = true
+
+      local carry = 1
+      local x
+      for i = 1, #self - 1 do
+        x = self[i] - carry
+        carry = x < 0 and 1 or 0
+        x = bxor(x, 0xffff)
+        tokens[#tokens+1] = string.char(rshift(x, 8), band(x, 255))
+      end
+      -- self[#self] here is always >0, thus we can substract the carry no
+      -- matter its value, yet its uppermost bit must be zero (before the xor)
+      x = self[#self] - carry
+      if x < 128 then
+        tokens[#tokens+1] = string.char(bxor(0xff, x))
+      else
+        local y = bxor(0xffff, x)
+        tokens[#tokens+1] = string.char(rshift(y, 8), band(y, 255))
+        if x >= 32768 then
+          tokens[#tokens+1] = '\255'
+        end
+      end
+    end
+
   elseif fmt == 'dec' then
     if self.sign == 0 then return opts.zero or '0' end
-    local tokens = {}
+    tokens = {}
     local n = self.sign > 0 and self or -self
     local decformat = ('%%0%dd'):format(atomdecexp)
-    while n > 0 do
-      local n, r = n:divmodatom(atomdecmodulo)
-      if n ~= 0 then
+    local r
+    while n > zero do
+      n, r = n:divmodatom(atomdecmodulo)
+      if n ~= zero then
         tokens[#tokens+1] = decformat:format(r)
       else
         -- last token, without leading zeros, r is always > 0:
@@ -366,13 +413,16 @@ function bigint:tostring(fmt, opts)
     tokens[#tokens+1] = (
       self.sign < 0 and (opts.minus_sign or '-') or (opts.plus_sign or '')
     )
-    -- reverse:
+    needsreverse = true
+  else
+    error 'unsupported base'
+  end
+  if needsreverse then
     for i = 1, math.floor(#tokens/2) do
       tokens[i], tokens[#tokens-i+1] = tokens[#tokens-i+1], tokens[i]
     end
-    return table.concat(tokens)
   end
-  error 'unsupported base'
+  return table.concat(tokens)
 end
 
 return {
