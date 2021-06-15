@@ -15,6 +15,35 @@ function BigIntTest:test_new()
   self:assert_deep_equal(new(-4), m{4, sign=-1})
   self:assert_deep_equal(new(0), m{sign=0})
   self:assert_deep_equal(new(0x10002), m{2, 1, sign=1})
+  self:assert_deep_equal(new'0', bigint.zero)
+  self:assert_deep_equal(new'00', bigint.zero)
+  self:assert_deep_equal(new'1', bigint.one)
+  self:assert_deep_equal(new'00000000000000000000001', bigint.one)
+  self:assert_deep_equal(new'1234567', m{54919, 18, sign=1})
+  self:assert_deep_equal(new'-1234567', m{54919, 18, sign=-1})
+  -- TODO: enable once multiplication is complete:
+  -- self:assert_deep_equal(new('12345678'), m{24910, 188, sign=1})
+  self:assert_deep_equal(new'0x414f69a371947399bad117e0ffcd08e',
+    m{0xd08e, 0xffc, 0x117e, 0x9bad, 0x4739, 0x3719, 0xf69a, 0x414, sign=1})
+  self:assert_deep_equal(new'0x0', bigint.zero)
+  self:assert_deep_equal(new'0x1', bigint.one)
+  self:assert_deep_equal(new'0x12', m{0x12, sign=1})
+  self:assert_deep_equal(new'0x123', m{0x123, sign=1})
+  self:assert_deep_equal(new'0x1234', m{0x1234, sign=1})
+  self:assert_deep_equal(new'0x12345', m{0x2345, 0x1, sign=1})
+  self:assert_deep_equal(new'0x123456', m{0x3456, 0x12, sign=1})
+  self:assert_deep_equal(new'0x1234567', m{0x4567, 0x123, sign=1})
+  self:assert_deep_equal(new'0x12345678', m{0x5678, 0x1234, sign=1})
+  self:assert_deep_equal(new'0x123456789', m{0x6789, 0x2345, 1, sign=1})
+  self:assert_deep_equal(new'-0x1', -bigint.one)
+  self:assert_deep_equal(new'-0x12', m{0x12, sign=-1})
+  self:assert_deep_equal(new'-0x123', m{0x123, sign=-1})
+  self:assert_deep_equal(new'-0x1234', m{0x1234, sign=-1})
+  self:assert_deep_equal(new'-0x12345', m{0x2345, 0x1, sign=-1})
+  self:assert_deep_equal(new'-0x123456', m{0x3456, 0x12, sign=-1})
+  self:assert_deep_equal(new'-0x1234567', m{0x4567, 0x123, sign=-1})
+  self:assert_deep_equal(new'-0x12345678', m{0x5678, 0x1234, sign=-1})
+  self:assert_deep_equal(new'-0x123456789', m{0x6789, 0x2345, 1, sign=-1})
 end
 
 
@@ -103,7 +132,7 @@ end
 
 
 function BigIntTest:test_lenbits()
-  self:assert_equal(new(1):lenbits(), 1)
+  self:assert_equal(bigint.one:lenbits(), 1)
   self:assert_equal(new(-4):lenbits(), 3)
   self:assert_equal(new(0):lenbits(), 0)
   self:assert_equal(new(1000):lenbits(), 10)
@@ -112,17 +141,24 @@ function BigIntTest:test_lenbits()
 end
 
 
+function BigIntTest:test_tonumber()
+  self:assert_equal(bigint.zero:tonumber(), 0)
+  self:assert_equal(new(438912):tonumber(), 438912)
+  self:assert_equal(new(-1234567890):tonumber(), -1234567890)
+end
+
+
 function BigIntTest:test_tostring()
   -- hex format:
-  self:assert_equal(new(0):tostring'hex', '0')
+  self:assert_equal(bigint.zero:tostring'hex', '0')
   self:assert_equal(new(0x10000789a):tostring'hex', '0x10000789a')
   self:assert_equal(new(-0x3ffff):tostring'hex', '-0x3ffff')
-  self:assert_equal(new(0):tostring('hex', {zero='0x0'}), '0x0')
+  self:assert_equal(bigint.zero:tostring('hex', {zero='0x0'}), '0x0')
   self:assert_equal(new(9):tostring('hex', {plus_sign='¿'}), '¿0x9')
   self:assert_equal(new(-1):tostring('hex', {minus_sign='¬'}), '¬0x1')
   self:assert_equal(new(-1):tostring('hex', {prefix='!'}), '-!1')
   -- dec format:
-  self:assert_equal(new(0):tostring'dec', '0')
+  self:assert_equal(bigint.zero:tostring'dec', '0')
   self:assert_equal(new(1234567890):tostring'dec', '1234567890')
   self:assert_equal(new(-1234567890):tostring'dec', '-1234567890')
   self:assert_equal(m{0, 1, sign=1}:tostring'dec', '65536')

@@ -21,6 +21,7 @@ local mt = {__index = bigint}
 
 local one = setmetatable({1, sign=1}, mt)
 local zero = setmetatable({sign=0}, mt)
+local tenmillion = setmetatable({38528, 152, sign=1}, mt)
 
 local atombits = 16
 local atombase = lshift(1, atombits)
@@ -32,26 +33,45 @@ while atomdecmodulo * 10 < atombase do
   atomdecexp = atomdecexp + 1
 end
 
+local normalize
+
 local function new(n)
-  if n == 0 then return zero end
+  if n == 0 or n == '0' then return zero end
   if n == 1 then return one end
-  local res = setmetatable({}, mt)
+  local res = setmetatable({sign=1}, mt)
   if type(n) == 'number' then
     assert(n == math.floor(n), 'bigints must be integers')
     if n < 0 then
       n = -n
       res.sign = -1
-    else
-      res.sign = 1
     end
     while n ~= 0 do
       res[#res+1] = n % atombase
       n = math.floor(n / atombase)
     end
+  elseif type(n) == 'string' then
+    local sign, start, base = 1, 1, 10
+    if n:find('^-') then sign, start = -1, 2 end
+    if n:find('^0x', start) then base, start = 16, start+2 end
+    if base == 10 then
+      res = zero
+      for i = start, #n, 7 do
+        res = res * tenmillion + new(tonumber(n:sub(i, i+6)))
+      end
+    elseif base == 16 then
+      assert(atombits%4 == 0, 'not supported for this atombits value')
+      local hexdigits = atombits / 4
+      for i = #n-hexdigits+1, start-hexdigits+1, -hexdigits do
+        res[#res+1] = tonumber(n:sub(math.max(i, start), i+hexdigits-1), 16)
+      end
+    else
+      error 'unsupported base'  -- this error cannot happen, but meh...
+    end
+    res.sign = sign
   else
     error 'TODO: implement'
   end
-  return res
+  return normalize(res)
 end
 
 -- CRT: A function that returns an x: 0<=x<min{ns}, such that:
@@ -76,7 +96,7 @@ local function copy(x)
 end
 
 -- mutates x removing trailing zeros and adjusting the sign to 0 if necessary
-local function normalize(x)
+function normalize(x)
   for i = #x, 1, -1 do
     if x[i] ~= 0 then break end
     x[i] = nil
@@ -154,6 +174,10 @@ function mt:__mod(other)
 end
 
 function mt:__mul(other)
+  if self.sign == 0 or other.sign == 0 then return zero end
+  if self == one then return other end
+  if other == one then return self end
+
   error 'TODO: implement'
 end
 
@@ -330,6 +354,14 @@ function bigint:rshift(n)
     tmp = rshift(tmp, atombits)
   end
   return res
+end
+
+function bigint:tonumber()
+  local sum = 0
+  for i = #self, 1, -1 do
+    sum = sum * atombase + self[i]
+  end
+  return sum * self.sign
 end
 
 function bigint:tostring(fmt, opts)

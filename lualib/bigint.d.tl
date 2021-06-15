@@ -56,6 +56,9 @@ local record BigInt
     -- arithmetic shift offset bits to the right
     rshift: function(bigint, offset: integer): bigint
   
+    -- convert to a normal lua number, precision may be lost
+    tonumber: function(bigint): number
+
     enum TostringFormat
       "hex"  -- base 16
       "dec"  -- base 10
@@ -81,7 +84,7 @@ local record BigInt
   mt: metatable<bigint>  -- the metatable used here
 
   -- constructs a new bigint:
-  new: function(n: integer): bigint
+  new: function(n: integer | string): bigint
 
   one: bigint
   zero: bigint
