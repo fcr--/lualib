@@ -26,6 +26,9 @@ local record BigInt
     -- bitwise 'and' of the two numbers:
     band: function(bigint, bigint): bigint
 
+    -- basic school multiplication implementation
+    bmul: function(bigint, bigint): bigint
+
     -- bitwise 'or' of the two numbers:
     bor: function(bigint, bigint): bigint
 

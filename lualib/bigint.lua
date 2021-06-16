@@ -55,8 +55,13 @@ local function new(n)
     if n:find('^0x', start) then base, start = 16, start+2 end
     if base == 10 then
       res = zero
-      for i = start, #n, 7 do
-        res = res * tenmillion + new(tonumber(n:sub(i, i+6)))
+      -- we must iterate starting on a give position start-6<=i<=start,
+      -- such that the last token has size 7, this means that this initial
+      -- position i has to be congruent with #n-6 modulo 7, that's why we
+      -- subtract that crazy stuff:
+      for i = start-(start+6-#n)%7, #n-6, 7 do
+        local chunk = n:sub(math.max(i, start), i+6)
+        res = res:bmul(tenmillion) + new(tonumber(chunk))
       end
     elseif base == 16 then
       assert(atombits%4 == 0, 'not supported for this atombits value')
@@ -225,6 +230,27 @@ function bigint:band(other)
     res[i] = band(self[i], other[i])
   end
   return normalize(res)
+end
+
+function bigint:bmul(other)
+  local res = {sign = self.sign * other.sign}
+  if res.sign == 0 then return res end
+  for j = 1, #other do
+    local carry = 0
+    for i = 1, #self do
+      -- note that B * C + D + E, with A if B,C,D and E having N bits will
+      -- be representable in 2N bits, since:
+      -- (2^N-1)*(2^N-1) + (2^N-1) + (2^N-1) == 2^(2N)-1
+      local mul = self[i]*other[j] + (res[i+j-1] or 0) + carry
+      carry = rshift(mul, atombits)
+      res[i+j-1] = band(mul, atommask)
+    end
+    if carry ~= 0 then
+      -- biggest index was at res[#self+j-1]:
+      res[#self+j] = carry
+    end
+  end
+  return res  -- there's no need to normalize it
 end
 
 function bigint:bor(other)
