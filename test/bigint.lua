@@ -108,6 +108,17 @@ function BigIntTest:test_band()
 end
 
 
+function BigIntTest:test_bmul()
+  self:assert_equal(new(42):bmul(bigint.zero), bigint.zero)
+  self:assert_equal(bigint.zero:bmul(new(42)), bigint.zero)
+  self:assert_equal(new(0x10002):bmul(new(-0x30004)), new(-0x3000a0008))
+  self:assert_equal(new(-2):bmul(new(-3)), new(6))
+  self:assert_equal(
+    new'0x78431badc0ffee876':bmul(new'0xc1f7e493209a577ef5a'),
+    new'0x5b1f0bfe95a6b35bc8dd508d17c4b77de37c')
+end
+
+
 function BigIntTest:test_bor()
   self:assert_equal(new(3):bor(new(6)), new(7))
   self:assert_equal(bigint.one:bor(bigint.zero), bigint.one)

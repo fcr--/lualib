@@ -233,7 +233,7 @@ function bigint:band(other)
 end
 
 function bigint:bmul(other)
-  local res = {sign = self.sign * other.sign}
+  local res = setmetatable({sign = self.sign * other.sign}, mt)
   if res.sign == 0 then return res end
   for j = 1, #other do
     local carry = 0
