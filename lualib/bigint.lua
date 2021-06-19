@@ -33,12 +33,15 @@ while atomdecmodulo * 10 < atombase do
   atomdecexp = atomdecexp + 1
 end
 
+
+local empty
 local normalize
+
 
 local function new(n)
   if n == 0 or n == '0' then return zero end
   if n == 1 then return one end
-  local res = setmetatable({sign=1}, mt)
+  local res = empty(1)
   if type(n) == 'number' then
     assert(n == math.floor(n), 'bigints must be integers')
     if n < 0 then
@@ -79,6 +82,7 @@ local function new(n)
   return normalize(res)
 end
 
+
 -- CRT: A function that returns an x: 0<=x<min{ns}, such that:
 --    x % ns[i] == as[i] for all 1<=i<=#ns
 local function crt(ns, as)
@@ -94,11 +98,18 @@ local function crt(ns, as)
   return sum % prod
 end
 
+
 local function copy(x)
-  local res = setmetatable({sign = x.sign}, mt)
+  local res = empty(x.sign)
   for i = 1, #x do res[i] = x[i] end
   return res
 end
+
+
+function empty(sign)
+  return setmetatable({sign = sign}, mt)
+end
+
 
 -- mutates x removing trailing zeros and adjusting the sign to 0 if necessary
 function normalize(x)
@@ -110,9 +121,10 @@ function normalize(x)
   return x
 end
 
+
 -- returns the sign of the first argument:
 local function raw_add(x, y)
-  local res = setmetatable({sign = x.sign}, mt)
+  local res = empty(x.sign)
   local carry = 0
   for i = 1, math.max(#x, #y) do
     local t = (x[i] or 0) + (y[i] or 0) + carry
@@ -125,10 +137,11 @@ local function raw_add(x, y)
   return res
 end
 
+
 -- precondition: abs(x) >= abs(y)
 -- returns the sign of the first argument
 local function raw_sub(x, y)
-  local res = setmetatable({sign = x.sign}, mt)
+  local res = empty(x.sign)
   local carry = 0
   for i = 1, #x do
     local t = x[i] - (y[i] or 0) - carry
@@ -139,11 +152,13 @@ local function raw_sub(x, y)
   return normalize(res)
 end
 
+
 -- simple utility function to shorten the code of several methods
 local function setsign(x, sign)
   x.sign = sign
   return x
 end
+
 
 function mt:__add(other)
   if self.sign == 0 then return other end
@@ -158,38 +173,54 @@ function mt:__add(other)
   end
 end
 
+
 function mt:__div(other)
   return select(1, self:divmod(other))
 end
+
 
 function mt:__eq(other)
   return self:cmp(other) == 0
 end
 
+
 function mt:__le(other)
   return self:cmp(other) <= 0
 end
+
 
 function mt:__lt(other)
   return self:cmp(other) < 0
 end
 
+
 function mt:__mod(other)
   return select(2, self:divmod(other))
 end
+
 
 function mt:__mul(other)
   if self.sign == 0 or other.sign == 0 then return zero end
   if self == one then return other end
   if other == one then return self end
 
-  error 'TODO: implement'
+  -- For "small"-ish numbers we might just use the traditional multiplication
+  -- since it takes about the same time as the karatsuba versions but without
+  -- making so much garbage (aka, let's avoid adding extra work to the gc):
+  if #self < 400 or #other < 400 then return self:bmul(other) end
+
+  -- Even though kmul_unrolled generates a bit more garbage, it's a bit
+  -- faster than kmul_unrolled2 (btw, on my computer a threshold of 185 seems
+  -- to maximize the runtime ratio over bmul):
+  return self:kmul_unrolled(other, 185)
 end
+
 
 -- power must be an integer number
 function mt:__pow(power)
   error 'TODO: implement'
 end
+
 
 function mt:__sub(other)
   -- controlled mutation (don't try this at home):
@@ -199,17 +230,21 @@ function mt:__sub(other)
   return res
 end
 
+
 function mt:__tostring()
   return self:tostring 'hex'
 end
+
 
 function mt:__unm()
   return setsign(copy(self), -self.sign)
 end
 
+
 function bigint:abs()
   return setsign(copy(self), math.abs(self.sign))
 end
+
 
 -- compare absolute values returning -1, 0 or 1 depending on whether the
 -- absolute value of self is <, = or > than the absolute value of other
@@ -224,16 +259,19 @@ function bigint:abscmp(other)
   return 0
 end
 
+
 function bigint:band(other)
-  local res = setmetatable({sign = math.max(self.sign, other.sign)}, mt)
+  local res = empty(math.max(self.sign, other.sign))
   for i = 1, math.min(#self, #other) do
     res[i] = band(self[i], other[i])
   end
   return normalize(res)
 end
 
+
+-- Basic Multiplication:
 function bigint:bmul(other)
-  local res = setmetatable({sign = self.sign * other.sign}, mt)
+  local res = empty(self.sign * other.sign)
   if res.sign == 0 then return res end
   for j = 1, #other do
     local carry = 0
@@ -253,23 +291,26 @@ function bigint:bmul(other)
   return res  -- there's no need to normalize it
 end
 
+
 function bigint:bor(other)
   local T = {[-1] = -1, [0] = 1, 1}
-  local res = setmetatable({sign = math.min(T[self.sign], T[other.sign])}, mt)
+  local res = empty(math.min(T[self.sign], T[other.sign]))
   for i = 1, math.max(#self, #other) do
     res[i] = bor(self[i] or 0, other[i] or 0)
   end
   return normalize(res)
 end
 
+
 function bigint:bxor(other)
   local T = {[-1] = -1, [0] = 1, 1}
-  local res = setmetatable({sign = T[self.sign] * T[other.sign]}, mt)
+  local res = empty(T[self.sign] * T[other.sign])
   for i = 1, math.max(#self, #other) do
     res[i] = bxor(self[i] or 0, other[i] or 0)
   end
   return normalize(res)
 end
+
 
 function bigint:cmp(other)
   if self.sign < other.sign then return -1 end
@@ -277,6 +318,7 @@ function bigint:cmp(other)
   if self.sign >= 0 then return self:abscmp(other) end
   return -self:abscmp(other)
 end
+
 
 function bigint:divmodatom(d)
   if d < 0 then
@@ -286,7 +328,7 @@ function bigint:divmodatom(d)
     return q, -r
   end
   assert(d > 0, 'division by zero')
-  local res = setmetatable({sign = self.sign}, mt)
+  local res = empty(self.sign)
   local remainder = 0
   for i = #self, 1, -1 do
     local tmp = bor(lshift(remainder, atombits), self[i])
@@ -308,6 +350,7 @@ function bigint:divmodatom(d)
   return normalize(res), remainder
 end
 
+
 function bigint:gcd(other)
   if self.sign == 0 or other.sign == 0 then
     return one
@@ -328,13 +371,187 @@ function bigint:gcd(other)
   return pr, ps, pt
 end
 
+
 function bigint:iseven()
   return band(self[1] or 0, 1) == 0
 end
 
+
 function bigint:isodd()
   return not self:iseven()
 end
+
+
+-- Karatsuba multiplication:
+function bigint:kmul(other, karatsuba_threshold)
+  local nmin = math.min(#self, #other)
+  if nmin < karatsuba_threshold then
+    return self:bmul(other)
+  end
+
+  local m = math.floor(nmin / 2 + 0.6)
+  local x0, y0, x1, y1 = empty(1), empty(1), empty(1), empty(1)
+  for i = 1, m do
+    x0[i] = self[i]
+    y0[i] = other[i]
+  end
+  normalize(x0)
+  normalize(y0)
+  for i = m+1, #self do x1[#x1+1] = self[i] end
+  for i = m+1, #other do y1[#y1+1] = other[i] end
+
+  local p2 = x1:kmul(y1, karatsuba_threshold)
+  local p0 = x0:kmul(y0, karatsuba_threshold)
+  local p1 = (x1 + x0):kmul(y1 + y0, karatsuba_threshold) - p2 - p0
+
+  return setsign(
+    p2:lshift(2*m*atombits) + p1:lshift(m*atombits) + p0,
+    self.sign * other.sign)
+end
+
+
+function bigint:kmul_unrolled(other, karatsuba_threshold)
+  local nmin = math.min(#self, #other)
+  if nmin < karatsuba_threshold then
+    return self:bmul(other)
+  end
+
+  local m = math.floor(nmin / 2 + 0.6)
+  local x0, y0, x1, y1 = empty(1), empty(1), empty(1), empty(1)
+  for i = 1, m do
+    x0[i] = self[i]
+    y0[i] = other[i]
+  end
+  normalize(x0)
+  normalize(y0)
+  for i = m+1, #self do x1[#x1+1] = self[i] end
+  for i = m+1, #other do y1[#y1+1] = other[i] end
+
+  local p2 = x1:kmul_unrolled(y1, karatsuba_threshold)
+  local p0 = x0:kmul_unrolled(y0, karatsuba_threshold)
+  local p1 = (x1 + x0):kmul_unrolled(y1 + y0, karatsuba_threshold)  -- - p2 - p0
+
+  -- equivalent to: p1 = p1 - y
+  -- (here we assume p1 >= y)
+  local function raw_sub_from_p1(substraend)
+    local carry = 0
+    --print('p1', p1)
+    --print('  -'..name, substraend)
+    for i = 1, #p1 do
+      local t = p1[i] - (substraend[i] or 0) - carry
+      p1[i] = band(t, atommask)
+      carry = t<0 and 1 or 0
+    end
+    if carry ~= 0 then
+      error(('carry ~= 0, %s - %s'):format(p1, substraend))
+    end
+  end
+  raw_sub_from_p1(p2)
+  raw_sub_from_p1(p0)
+  normalize(p1)
+
+  local function add_into_p0_with_offset(src, offset_words)
+    if src.sign == 0 then return end
+    for i = #p0+1, offset_words do
+      p0[i] = 0
+    end
+    local carry = 0
+    for i = 1, #src do
+      local t = (p0[i+offset_words] or 0) + src[i] + carry
+      p0[i+offset_words] = band(t, atommask)
+      carry = rshift(t, atombits)
+    end
+    if carry > 0 then
+      p0[#src+offset_words+1] = (p0[#src+offset_words+1] or 0) + carry
+    end
+  end
+
+  add_into_p0_with_offset(p2, m+m)
+  add_into_p0_with_offset(p1, m)
+  return setsign(p0, self.sign * other.sign)
+end
+
+
+-- This version is not used, however I leave it here as an example of an
+-- optimization attempt that actually doesn't work.  I suspect that the
+-- reason is that across all recursive calls the average abs(#self-#other)
+-- is greater than on kmul_unrolled, meaning less opportunities for reducing
+-- the total number of multiplications performed.
+function bigint:kmul_unrolled2(other, karatsuba_threshold)
+  local function build_karatsuba_tree(n, length, depth)
+    local m = math.floor(length / 2 + 0.6)
+    if depth <= 0 then
+      return {n=n}
+    end
+
+    local hi_n, lo_n = empty(1), empty(1)
+    for i = 1, m do lo_n[i] = n[i] end
+    for i = m+1, #n do hi_n[#hi_n+1] = n[i] end
+    return {
+      hi = build_karatsuba_tree(hi_n, m, depth-1),
+      lo = build_karatsuba_tree(normalize(lo_n), m, depth-1),
+      n = n,
+    }
+  end
+  local length = math.min(#self, #other)
+  -- number of bisections:
+  local depth = math.floor(math.log(length/karatsuba_threshold, 2))
+  local tself = build_karatsuba_tree(self, length, depth)
+  local tother = build_karatsuba_tree(other, length, depth)
+
+  local function karatsuba_rec(node1, node2, length)
+    if not node1.lo or not node2.lo then
+      return node1.n:bmul(node2.n)
+    end
+
+    local m = math.floor(length / 2 + 0.6)
+    local p2 = karatsuba_rec(node1.hi, node2.hi, m)
+    local p0 = karatsuba_rec(node1.lo, node2.lo, m)
+    local p1 = (node1.hi.n + node1.lo.n):kmul_unrolled2(node2.hi.n + node2.lo.n, karatsuba_threshold)  -- - p2 - p0
+
+    -- equivalent to: p1 = p1 - y
+    -- (here we assume p1 >= y)
+    local function raw_sub_from_p1(substraend)
+      local carry = 0
+      --print('p1', p1)
+      --print('  -'..name, substraend)
+      for i = 1, #p1 do
+        local t = p1[i] - (substraend[i] or 0) - carry
+        p1[i] = band(t, atommask)
+        carry = t<0 and 1 or 0
+      end
+      if carry ~= 0 then
+        error(('carry ~= 0, %s - %s'):format(p1, substraend))
+      end
+    end
+    raw_sub_from_p1(p2)
+    raw_sub_from_p1(p0)
+    normalize(p1)
+
+    local function add_into_p0_with_offset(src, offset_words)
+      if src.sign == 0 then return end
+      for i = #p0+1, offset_words do
+        p0[i] = 0
+      end
+      local carry = 0
+      for i = 1, #src do
+        local t = (p0[i+offset_words] or 0) + src[i] + carry
+        p0[i+offset_words] = band(t, atommask)
+        carry = rshift(t, atombits)
+      end
+      if carry > 0 then
+        p0[#src+offset_words+1] = (p0[#src+offset_words+1] or 0) + carry
+      end
+    end
+
+    add_into_p0_with_offset(p2, m+m)
+    add_into_p0_with_offset(p1, m)
+    return setsign(p0, self.sign * other.sign)
+  end
+
+  return karatsuba_rec(tself, tother, length)
+end
+
 
 function bigint:lenbits()
   if self.sign == 0 then return 0 end
@@ -351,8 +568,9 @@ function bigint:lenbits()
   return log2
 end
 
+
 function bigint:lshift(n)
-  local res = setmetatable({sign = self.sign}, mt)
+  local res = empty(self.sign)
   local natoms, nbits = math.floor(n / atombits), n % atombits
   for i = 1, natoms do
     res[i] = 0
@@ -366,12 +584,14 @@ function bigint:lshift(n)
   return res
 end
 
+
 function bigint:powmod(power, mod)
   error 'TODO: implement'
 end
 
+
 function bigint:rshift(n)
-  local res = setmetatable({sign = self.sign}, mt)
+  local res = empty(self.sign)
   local natoms, nbits = math.floor(n / atombits), n % atombits
   local tmp = rshift(self[1 + natoms], nbits)
   for i = 1, #self - natoms do
@@ -382,6 +602,7 @@ function bigint:rshift(n)
   return res
 end
 
+
 function bigint:tonumber()
   local sum = 0
   for i = #self, 1, -1 do
@@ -389,6 +610,7 @@ function bigint:tonumber()
   end
   return sum * self.sign
 end
+
 
 function bigint:tostring(fmt, opts)
   local tokens
@@ -488,6 +710,7 @@ function bigint:tostring(fmt, opts)
   end
   return table.concat(tokens)
 end
+
 
 return {
   atombase = atombase,

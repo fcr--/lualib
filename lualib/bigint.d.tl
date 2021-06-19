@@ -47,6 +47,12 @@ local record BigInt
     -- returns true if the number is not a multiple of 2
     isodd: function(bigint): boolean
 
+    -- you probably don't need this method, it's the karatsuba multiplication
+    kmod: function(bigint, bigint, threshold: integer): bigint
+    -- and a few unrolled (optimized) versions:
+    kmod_unrolled: function(bigint, bigint, threshold: integer): bigint
+    kmod_unrolled2: function(bigint, bigint, threshold: integer): bigint
+
     -- returns the number of bits needed to represent it
     lenbits: function(bigint): integer
 
