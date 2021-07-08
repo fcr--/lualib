@@ -204,6 +204,13 @@ function BaseTest:assert_nil(x)
 end
 
 
+function BaseTest:assert_not_equal(x, y)
+  if x == y then
+    error(('expected %s == %s'):format(x, y))
+  end
+end
+
+
 function BaseTest:assert_not_nil(x)
   if x == nil then
     error(('expected not nil but received %s: %q'):format(type(x), x))

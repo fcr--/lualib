@@ -99,13 +99,6 @@ local function crt(ns, as)
 end
 
 
-local function copy(x)
-  local res = empty(x.sign)
-  for i = 1, #x do res[i] = x[i] end
-  return res
-end
-
-
 function empty(sign)
   return setmetatable({sign = sign}, mt)
 end
@@ -223,6 +216,7 @@ end
 
 
 function mt:__sub(other)
+  if rawequal(self, other) then return zero end
   -- controlled mutation (don't try this at home):
   other.sign = -other.sign
   local res = self + other
@@ -237,12 +231,12 @@ end
 
 
 function mt:__unm()
-  return setsign(copy(self), -self.sign)
+  return setsign(self:copy(), -self.sign)
 end
 
 
 function bigint:abs()
-  return setsign(copy(self), math.abs(self.sign))
+  return setsign(self:copy(), math.abs(self.sign))
 end
 
 
@@ -266,6 +260,20 @@ function bigint:band(other)
     res[i] = band(self[i], other[i])
   end
   return normalize(res)
+end
+
+
+-- Hamming Weight of its absolute number.
+function bigint:bcount()
+  local weights4bit = {[0]=0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4}
+  local sum = 0
+  for i, x in ipairs(self) do
+    sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
+    sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
+    sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
+    sum = sum + weights4bit[band(x, 15)]
+  end
+  return sum
 end
 
 
@@ -317,6 +325,13 @@ function bigint:cmp(other)
   if self.sign > other.sign then return 1 end
   if self.sign >= 0 then return self:abscmp(other) end
   return -self:abscmp(other)
+end
+
+
+function bigint:copy()
+  local res = empty(self.sign)
+  for i = 1, #self do res[i] = self[i] end
+  return res
 end
 
 
@@ -402,7 +417,9 @@ function bigint:kmul(other, karatsuba_threshold)
 
   local p2 = x1:kmul(y1, karatsuba_threshold)
   local p0 = x0:kmul(y0, karatsuba_threshold)
-  local p1 = (x1 + x0):kmul(y1 + y0, karatsuba_threshold) - p2 - p0
+  x0:mutable_unsigned_add(x1)
+  y0:mutable_unsigned_add(y1)
+  local p1 = x0:kmul(y0, karatsuba_threshold) - p2 - p0
 
   return setsign(
     p2:lshift(2*m*atombits) + p1:lshift(m*atombits) + p0,
@@ -429,7 +446,9 @@ function bigint:kmul_unrolled(other, karatsuba_threshold)
 
   local p2 = x1:kmul_unrolled(y1, karatsuba_threshold)
   local p0 = x0:kmul_unrolled(y0, karatsuba_threshold)
-  local p1 = (x1 + x0):kmul_unrolled(y1 + y0, karatsuba_threshold)  -- - p2 - p0
+  x0:mutable_unsigned_add(x1)
+  y0:mutable_unsigned_add(y1)
+  local p1 = x0:kmul_unrolled(y0, karatsuba_threshold)  -- - p2 - p0
 
   -- equivalent to: p1 = p1 - y
   -- (here we assume p1 >= y)
@@ -461,8 +480,12 @@ function bigint:kmul_unrolled(other, karatsuba_threshold)
       p0[i+offset_words] = band(t, atommask)
       carry = rshift(t, atombits)
     end
-    if carry > 0 then
-      p0[#src+offset_words+1] = (p0[#src+offset_words+1] or 0) + carry
+    local i = #src + 1
+    while carry > 0 do
+      local t = (p0[i+offset_words] or 0) + carry
+      p0[i+offset_words] = band(t, atommask)
+      carry = rshift(t, atombits)
+      i = i + 1
     end
   end
 
@@ -477,6 +500,7 @@ end
 -- reason is that across all recursive calls the average abs(#self-#other)
 -- is greater than on kmul_unrolled, meaning less opportunities for reducing
 -- the total number of multiplications performed.
+-- Also, reusing the nodes means that we cannot use the mutable_unsigned_add.
 function bigint:kmul_unrolled2(other, karatsuba_threshold)
   local function build_karatsuba_tree(n, length, depth)
     local m = math.floor(length / 2 + 0.6)
@@ -539,8 +563,12 @@ function bigint:kmul_unrolled2(other, karatsuba_threshold)
         p0[i+offset_words] = band(t, atommask)
         carry = rshift(t, atombits)
       end
-      if carry > 0 then
-        p0[#src+offset_words+1] = (p0[#src+offset_words+1] or 0) + carry
+      local i = #src + 1
+      while carry > 0 do
+        local t = (p0[i+offset_words] or 0) + carry
+        p0[i+offset_words] = band(t, atommask)
+        carry = rshift(t, atombits)
+        i = i + 1
       end
     end
 
@@ -582,6 +610,36 @@ function bigint:lshift(n)
     tmp = rshift(tmp, atombits)
   end
   return res
+end
+
+
+function bigint:mutable_unsigned_add(other)
+  local carry = 0
+  for i = 1, #other do
+    local t = (self[i] or 0) + other[i] + carry
+    self[i] = band(t, atommask)
+    carry = rshift(t, atombits)
+  end
+  local i = #other + 1
+  while carry > 0 do
+    local t = (self[i] or 0) + carry
+    self[i] = band(t, atommask)
+    carry = rshift(t, atombits)
+    i = i + 1
+  end
+end
+
+
+-- mutable equivalent to doing: x + bigint.new(self.sign * atom)
+function bigint:mutable_unsigned_add_atom(atom)
+  assert(atom >= 0 and atom < atombase and math.floor(atom) == atom, 'invalid atom')
+  local i = 1
+  while atom > 0 do
+    local t = (self[i] or 0) + atom
+    self[i] = band(t, atommask)
+    atom = rshift(t, atombits)
+    i = i + 1
+  end
 end
 
 

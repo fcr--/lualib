@@ -186,27 +186,27 @@ end
 
 
 function BigIntTest:test___add()
-  self:assert_deep_equal(new(2) + new(5), new(7))
-  self:assert_deep_equal(new(2) + new(-5), new(-3))
-  self:assert_deep_equal(new(-2) + new(5), new(3))
-  self:assert_deep_equal(new(5) + new(-2), new(3))
-  self:assert_deep_equal(new(-5) + new(2), new(-3))
-  self:assert_deep_equal(new(-3) + new(-3), new(-6))
-  self:assert_deep_equal(new(3) + new(-3), new(0))
+  self:assert_equal(new(2) + new(5), new(7))
+  self:assert_equal(new(2) + new(-5), new(-3))
+  self:assert_equal(new(-2) + new(5), new(3))
+  self:assert_equal(new(5) + new(-2), new(3))
+  self:assert_equal(new(-5) + new(2), new(-3))
+  self:assert_equal(new(-3) + new(-3), new(-6))
+  self:assert_equal(new(3) + new(-3), new(0))
 
-  self:assert_deep_equal(new(0x10002) + new(0), new(0x10002))
-  self:assert_deep_equal(new(0) + new(0x10002), new(0x10002))
-  self:assert_deep_equal(new(-0x10002) + new(0), new(-0x10002))
-  self:assert_deep_equal(new(0) + new(-0x10002), new(-0x10002))
+  self:assert_equal(new(0x10002) + new(0), new(0x10002))
+  self:assert_equal(new(0) + new(0x10002), new(0x10002))
+  self:assert_equal(new(-0x10002) + new(0), new(-0x10002))
+  self:assert_equal(new(0) + new(-0x10002), new(-0x10002))
   
-  self:assert_deep_equal(new(0x10000) + new(2), new(0x10002))
-  self:assert_deep_equal(new(2) + new(0x10000), new(0x10002))
-  self:assert_deep_equal(new(0x10000) + new(-2), new(0xfffe))
-  self:assert_deep_equal(new(-2) + new(0x10000), new(0xfffe))
-  self:assert_deep_equal(new(-0x10000) + new(2), new(-0xfffe))
-  self:assert_deep_equal(new(2) + new(-0x10000), new(-0xfffe))
-  self:assert_deep_equal(new(-0x10000) + new(-2), new(-0x10002))
-  self:assert_deep_equal(new(-2) + new(-0x10000), new(-0x10002))
+  self:assert_equal(new(0x10000) + new(2), new(0x10002))
+  self:assert_equal(new(2) + new(0x10000), new(0x10002))
+  self:assert_equal(new(0x10000) + new(-2), new(0xfffe))
+  self:assert_equal(new(-2) + new(0x10000), new(0xfffe))
+  self:assert_equal(new(-0x10000) + new(2), new(-0xfffe))
+  self:assert_equal(new(2) + new(-0x10000), new(-0xfffe))
+  self:assert_equal(new(-0x10000) + new(-2), new(-0x10002))
+  self:assert_equal(new(-2) + new(-0x10000), new(-0x10002))
 end
 
 
@@ -225,6 +225,14 @@ end
 
 function BigIntTest:test___mul()
   self:common_test_mul(function(a, b)return a*b end)
+end
+
+
+function BigIntTest:test___sub()
+  self:assert_equal(bigint.one - bigint.one, bigint.zero)
+  self:assert_equal(new(-1) - new(-1), bigint.zero)
+  self:assert_equal(bigint.one - new(-1), new(2))
+  self:assert_equal(new(-1) - bigint.one, new(-2))
 end
 
 
@@ -249,6 +257,18 @@ function BigIntTest:test_band()
   self:assert_equal(new(1+2):band(-new(2+4)), new(2))
   self:assert_equal((-new(1+2)):band(new(2+4)), new(2))
   self:assert_equal((-new(1+2)):band(-new(2+4)), new(-2))
+end
+
+
+function BigIntTest:test_bcount()
+  self:assert_equal(bigint.zero:bcount(), 0)
+  self:assert_equal(bigint.one:bcount(), 1)
+  self:assert_equal(new(0xffff):bcount(), 16)
+  self:assert_equal(new(0xffffffff):bcount(), 32)
+  self:assert_equal(new'0x123456789abcdef':bcount(), 32)
+  self:assert_equal(new'0x5a':bcount(), 4)
+  self:assert_equal(n1:bcount(), 3935)
+  self:assert_equal(new'0xad066a5d29f3f2a2a1c7c17dd082a79':bcount(), 62)
 end
 
 
@@ -279,9 +299,22 @@ function BigIntTest:test_bxor()
 end
 
 
+function BigIntTest:test_copy()
+  local n = new(42)
+  local m = n:copy()
+  self:assert_equal(n, m)
+  m:mutable_unsigned_add(bigint.one)
+  self:assert_equal(n, new '42')
+  self:assert_equal(m, new '43')
+  self:assert_not_equal(n, m)
+  self:assert_equal(bigint.zero:copy(), bigint.zero)
+  self:assert_equal(new(-42), new(-42):copy())
+end
+
+
 function BigIntTest:test_kmul()
   self:common_test_mul(function(a, b)return a:kmul(b, 400) end)
-  --n1, sn2 = n1*n1, n2*n2  -- if you wanna test with bigger numbers
+  --n1, n2 = n1*n1, n2*n2  -- if you wanna test with bigger numbers
   -- local measure_kmul = bigint.zero.kmul
   -- local measure_kmul = bigint.zero.kmul_unrolled
   -- local measure_kmul = bigint.zero.kmul_unrolled2
@@ -291,7 +324,7 @@ function BigIntTest:test_kmul()
       --collectgarbage()
       --collectgarbage()
       local start_base = os.clock()
-      for i=1, 100 do t=n1:bmul(n2) end
+      for i=1, 100 do _=n1:bmul(n2) end
       local start_kmul = os.clock()
       for i=1, 100 do _=measure_kmul(n1, n2, threshold) end
       local now = os.clock()
@@ -325,6 +358,22 @@ function BigIntTest:test_lenbits()
   self:assert_equal(new(1000):lenbits(), 10)
   self:assert_equal(new(0xffff):lenbits(), 16)
   self:assert_equal(new(0x10002):lenbits(), 17)
+end
+
+
+function BigIntTest:test_mutable_unsigned_add()
+  local n = new(0xfffffffe)
+  n:mutable_unsigned_add(new(2))
+  self:assert_equal(n, new(0x100000000))
+  n:mutable_unsigned_add(-bigint.one)
+  self:assert_equal(n, new(0x100000001))
+  n = -n
+  n:mutable_unsigned_add(bigint.one)
+  self:assert_equal(n, new(-0x100000002))
+  n:mutable_unsigned_add(new(0xfffffffe))
+  self:assert_equal(n, new(-0x200000000))
+  n:mutable_unsigned_add(bigint.one:lshift(64))
+  self:assert_equal(n, new'-0x10000000200000000')
 end
 
 

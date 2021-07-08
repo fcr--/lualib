@@ -26,6 +26,9 @@ local record BigInt
     -- bitwise 'and' of the two numbers:
     band: function(bigint, bigint): bigint
 
+    -- hamming weight of the number:
+    bcount: function(bigint): integer
+
     -- basic school multiplication implementation
     bmul: function(bigint, bigint): bigint
 
@@ -38,6 +41,9 @@ local record BigInt
     -- returns -1, 0, 1 depending on whether x is <, == or > than y:
     cmp: function(x: bigint, y: bigint): integer
 
+    -- returns a copy of the number (that can be mutated safely)
+    copy: function(bigint): bigint
+
     -- gcd followed by bézout coefficients
     gcd: function(bigint, bigint): bigint, bigint, bigint
     
@@ -49,7 +55,7 @@ local record BigInt
 
     -- you probably don't need this method, it's the karatsuba multiplication
     kmod: function(bigint, bigint, threshold: integer): bigint
-    -- and a few unrolled (optimized) versions:
+    -- neither these (a few unrolled versions):
     kmod_unrolled: function(bigint, bigint, threshold: integer): bigint
     kmod_unrolled2: function(bigint, bigint, threshold: integer): bigint
 
@@ -58,6 +64,14 @@ local record BigInt
 
     -- shifts offset bits to the left
     lshift: function(bigint, offset: integer): bigint
+
+    -- BE CAREFUL WHEN WORKING WITH MUTABLE METHODS, AS SOME OPERATIONS RETURN
+    -- REFERENCES TO ARGUMENTS OR SHARED SINGLETONS LIKE zero OR one.
+    -- In case of doubt, use :copy() to create safe mutable bigints.
+
+    -- add ignoring signs:
+    mutable_unsigned_add: function(bigint, other: bigint)
+    mutable_unsigned_add_atom: function(bigint, atom: integer)
 
     -- fast equivalent alternative to (x^power%mod)
     powmod: function(x: bigint, power: bigint, mod: bigint): bigint
