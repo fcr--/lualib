@@ -197,6 +197,22 @@ function BaseTest:assert_equal(x, y)
 end
 
 
+function BaseTest:assert_error(fn, ...)
+  local res
+  return (function(ok, ...)
+    if ok then
+      local texts = {}
+      for i = 2, select('#', ...) do
+        texts[i-1] = ('%s'):tostring(select(i, ...))
+      end
+      error(('expected an error, returned: %s'):format(table.concat(texts, ', ')))
+    end
+    -- the error arguments are returned:
+    return ...
+  end)(pcall(fn, ...))
+end
+
+
 function BaseTest:assert_nil(x)
   if x ~= nil then
     error(('expected not nil but received %s: %q'):format(type(x), x))

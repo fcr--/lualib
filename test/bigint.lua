@@ -377,6 +377,21 @@ function BigIntTest:test_mutable_unsigned_add()
 end
 
 
+function BigIntTest:test_mutable_unsigned_add_atom()
+  local n = new'0x12345ffff6789'
+  n:mutable_unsigned_add_atom(7)
+  self:assert_equal(n, new'0x12345ffff6790')
+  n:mutable_unsigned_add_atom(0x9870)
+  self:assert_equal(n, new'0x1234600000000')
+  n = new(-32)
+  n:mutable_unsigned_add_atom(1)
+  self:assert_equal(n, new(-33))
+  self:assert_error(n.mutable_unsigned_add_atom, n, -1)
+  self:assert_error(n.mutable_unsigned_add_atom, n, 65536)
+  self:assert_error(n.mutable_unsigned_add_atom, n, 3.14159)
+end
+
+
 function BigIntTest:test_tonumber()
   self:assert_equal(bigint.zero:tonumber(), 0)
   self:assert_equal(new(438912):tonumber(), 438912)
