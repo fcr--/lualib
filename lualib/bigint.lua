@@ -23,6 +23,10 @@ local one = setmetatable({1, sign=1}, mt)
 local zero = setmetatable({sign=0}, mt)
 local tenmillion = setmetatable({38528, 152, sign=1}, mt)
 
+local shared_singletons = {
+  [one]=true, [zero]=true, [tenmillion]=true
+}
+
 local atombits = 16
 local atombase = lshift(1, atombits)
 local atommask = atombase - 1
@@ -80,6 +84,12 @@ local function new(n)
     error 'TODO: implement'
   end
   return normalize(res)
+end
+
+
+local function copy_if_singleton(n)
+  if shared_singletons[n] then return n:copy() end
+  return n
 end
 
 
@@ -187,6 +197,7 @@ function mt:__lt(other)
 end
 
 
+-- returned sign is always 0 or that of other
 function mt:__mod(other)
   return select(2, self:divmod(other))
 end
@@ -335,14 +346,71 @@ function bigint:copy()
 end
 
 
-function bigint:divmodatom(d)
+function bigint:divmod(div)
+  -- Fast version!
+  if #div == 1 then
+    local q, r = self:divmod_atom(div[1] * div.sign)
+    return q, new(r)
+  end
+
+  local q, r = self:divqr(div)
+  -- In divqr r's sign is self.sign or 0, however in divmod, r's sign is div.sign or 0.
+  -- So we need to adjust when those signs differ.
+  if r ~= zero and self.sign ~= div.sign then
+    q:mutable_unsigned_add_atom(1)
+    r = raw_sub(div, r)  -- sets r.sign = div.sign
+  end
+  return q, r
+end
+
+
+function bigint:divmod_atom(d)
+  local q, r = self:divqr_atom(d)
+  -- we must always ensure: ⌊x/d⌋*d + (x%d) == x
+  -- the modulus is different to the remainder in that it always has the
+  -- same sign as the divisor d.
+  if self.sign * d < -1 and r ~= 0 then
+    -- add 1 to res' value:
+    q:mutable_unsigned_add_atom(1)
+    r = math.abs(d) - math.abs(r)
+    if d < 0 then r = -r end
+  end
+  return q, r
+end
+
+
+function bigint:divqr(div)
+  assert(div.sign ~= 0, 'division by zero')
+  local rem = zero
+  local quo = empty(1)
+  for b = self:lenbits() - 1, 0, -1 do
+    local i = math.floor(b / atombits) + 1
+    local bitmask = lshift(1, band(b, atombits - 1))
+    rem = rem:lshift(1)
+    if band(self[i], bitmask) ~= 0 then
+      rem = setsign(copy_if_singleton(rem), 1)
+      rem[1] = bor(rem[1] or 0, 1)
+    end
+    if rem:abscmp(div) >= 0 then
+      rem = raw_sub(rem, div)
+    else
+      bitmask = 0
+    end
+    quo[i] = bor(quo[i] or 0, bitmask)
+  end
+  return normalize(setsign(quo, self.sign * div.sign)), normalize(setsign(rem, self.sign))
+end
+
+
+function bigint:divqr_atom(d)
   if d < 0 then
     self.sign = -self.sign
-    local q, r = self:divmodatom(-d)
+    local q, r = self:divqr_atom(-d)
     self.sign = -self.sign
     return q, -r
   end
   assert(d > 0, 'division by zero')
+  if d == 1 or self.sign == 0 then return self end
   local res = empty(self.sign)
   local remainder = 0
   for i = #self, 1, -1 do
@@ -350,19 +418,7 @@ function bigint:divmodatom(d)
     res[i] = math.floor(tmp / d)
     remainder = tmp % d
   end
-  -- we must always ensure: ⌊x/d⌋*d + (x%d) == x
-  -- the modulus is different to the remainder in that it always has the
-  -- same sign as the divisor d.
-  if self.sign < 0 and remainder ~= 0 then
-    -- add 1 to res' value:
-    for i = 1, #res do
-      res[i] = (res[i] or 0) + 1
-      if res[i] < atombase then break end
-      res[i] = 0
-    end
-    return res, d - remainder
-  end
-  return normalize(res), remainder
+  return normalize(res), self.sign < 0 and -remainder or remainder
 end
 
 
@@ -609,6 +665,9 @@ function bigint:lshift(n)
     res[i] = band(tmp, atommask)
     tmp = rshift(tmp, atombits)
   end
+  if tmp > 0 then
+    res[#res + 1] = tmp
+  end
   return res
 end
 
@@ -745,7 +804,7 @@ function bigint:tostring(fmt, opts)
     local decformat = ('%%0%dd'):format(atomdecexp)
     local r
     while n > zero do
-      n, r = n:divmodatom(atomdecmodulo)
+      n, r = n:divmod_atom(atomdecmodulo)
       if n ~= zero then
         tokens[#tokens+1] = decformat:format(r)
       else

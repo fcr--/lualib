@@ -312,6 +312,28 @@ function BigIntTest:test_copy()
 end
 
 
+function BigIntTest:test_divmod()
+  for _, pair in ipairs{{8, 7}, {8, -7}, {-8, 7}, {-8, -7},
+    {80000, 70000}, {80000, -70000}, {-80000, 70000}, {-80000, -70000}
+  } do
+    -- let's ensure consistency with lua's (IEEE-754) default behavior:
+    local x, y = pair[1], pair[2]
+    self:assert_deep_equal({new(x):divmod(new(y))}, {new(math.floor(x/y)), new(x%y)})
+  end
+end
+
+
+function BigIntTest:test_divqr()
+  self:assert_deep_equal({new(100):divqr(new(30))}, {new(3), new(10)})
+  self:assert_deep_equal({new(1000000):divqr(new(1))}, {new(1000000), bigint.zero})
+  self:assert_deep_equal({new(1000000):divqr(new(1000))}, {new(1000), bigint.zero})
+  self:assert_deep_equal({new(1000000):divqr(new(100000))}, {new(10), bigint.zero})
+  self:assert_deep_equal(
+    {new'0x798a9b789c7578ef076a86b890c675de52534f1':divqr(new'0xdeadcafe1234')},
+    {new'0x8bba855615feb83ca0a4d876ee0', new'0xac95dd96ef71'})
+end
+
+
 function BigIntTest:test_kmul()
   self:common_test_mul(function(a, b)return a:kmul(b, 400) end)
   --n1, n2 = n1*n1, n2*n2  -- if you wanna test with bigger numbers
@@ -358,6 +380,11 @@ function BigIntTest:test_lenbits()
   self:assert_equal(new(1000):lenbits(), 10)
   self:assert_equal(new(0xffff):lenbits(), 16)
   self:assert_equal(new(0x10002):lenbits(), 17)
+end
+
+
+function BigIntTest:test_lshift()
+  -- TODO: write test cases!
 end
 
 

@@ -44,6 +44,17 @@ local record BigInt
     -- returns a copy of the number (that can be mutated safely)
     copy: function(bigint): bigint
 
+    -- Division functions: the difference between divmod and divqr is the sign
+    -- of the second return value (modulus or remainder).
+    -- * In divqr the remainder has the sign of the dividend or 0,
+    --   and the quotiend is truncated.
+    -- * In divmod the remainder has the sign of the divisor or 0,
+    --   and the quotient is rounded down.
+    --   This is the behavior of: math.floor(x/y), x%y
+    divmod: function(bigint, bigint): bigint, bigint
+    divmod_atom: function(bigint, integer): bigint, integer
+    divqr: function(bigint, bigint): bigint, bigint
+
     -- gcd followed by bézout coefficients
     gcd: function(bigint, bigint): bigint, bigint, bigint
     
