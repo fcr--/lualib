@@ -135,6 +135,7 @@ local n1n2 = new(
     '0a5ee7a21de1880f622b747b396fd3c79e28be3ae1f9c6a9de73706fef1ac4cdea7' ..
     '086f21d0e5bfb84288e0c36892e100867b4be27181556167695ac0cff6a43311e88' ..
     '24e90')
+local p1 = new '0x44145cdc85a07da9b'
 
 
 function BigIntTest:common_test_mul(op)
@@ -346,6 +347,10 @@ end
 function BigIntTest:test_invmod()
   self:assert_equal(new(718):invmod(new(1079)), new(269))
   self:assert_equal(new(83):invmod(new(25)), new(22))
+  local a = new'7842361786148370890735160'
+  -- both assertions hold true for prime numbers:
+  self:assert_equal(a:invmod(p1), a:powmod(p1-new(2), p1))
+  self:assert_equal(p1:invmod(a) * p1 % a, bigint.one)
 end
 
 
