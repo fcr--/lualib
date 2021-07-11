@@ -162,4 +162,7 @@ function Sha1Test:test_lens()
 end
 
 
+Sha1Test:run_if_main()
+
+
 return Sha1Test

@@ -136,6 +136,7 @@ local n1n2 = new(
     '086f21d0e5bfb84288e0c36892e100867b4be27181556167695ac0cff6a43311e88' ..
     '24e90')
 local p1 = new '0x44145cdc85a07da9b'
+local p2 = new '0x17af663a3b84710a1'
 
 
 function BigIntTest:common_test_mul(op)
