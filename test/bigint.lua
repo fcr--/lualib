@@ -419,6 +419,24 @@ function BigIntTest:test_mutable_unsigned_add_atom()
 end
 
 
+function BigIntTest:test_pow()
+  self:assert_equal(bigint.one:pow(bigint.zero), bigint.one)
+  self:assert_equal(bigint.zero:pow(bigint.zero), bigint.one)
+  self:assert_equal(new(3):pow(new(3)), new(27))
+  self:assert_equal(new(10):pow(new(3)), new(1000))
+  self:assert_equal(new(2):pow(new(10)), new(1024))
+  self:assert_equal(new(2):pow(new(70000)), bigint.one:lshift(70000))
+  self:assert_equal(new(-0x30001):pow(new(2)), new'0x900060001')
+  self:assert_equal(new(-0x30001):pow(new(3)), new'-0x1b001b00090001')
+end
+
+
+function BigIntTest:test_rshift()
+  self:assert_equal(bigint.zero:rshift(0), bigint.zero)
+  -- TODO
+end
+
+
 function BigIntTest:test_tonumber()
   self:assert_equal(bigint.zero:tonumber(), 0)
   self:assert_equal(new(438912):tonumber(), 438912)

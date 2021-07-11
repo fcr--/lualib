@@ -702,6 +702,21 @@ function bigint:mutable_unsigned_add_atom(atom)
 end
 
 
+function bigint:pow(power)
+  assert(power.sign >= 0, 'pow does not support roots')
+  if power.sign == 0 then return one end
+  local res = one
+
+  if power:isodd() then res = res * self end
+  repeat
+    power = power:rshift(1)
+    self = self * self
+    if power:isodd() then res = res * self end
+  until power.sign == 0
+  return res
+end
+
+
 function bigint:powmod(power, mod)
   error 'TODO: implement'
 end
@@ -710,13 +725,10 @@ end
 function bigint:rshift(n)
   local res = empty(self.sign)
   local natoms, nbits = math.floor(n / atombits), n % atombits
-  local tmp = rshift(self[1 + natoms], nbits)
-  for i = 1, #self - natoms do
-    tmp = bor(tmp, lshift(self[i + natoms + 1] or 0, atombits))
-    res[i] = band(tmp, atommask)
-    tmp = rshift(tmp, atombits)
+  for i = #self, 1 + natoms, -1 do
+    res[i - natoms] = rshift(bor(lshift(self[i+1] or 0, atombits), self[i]), nbits)
   end
-  return res
+  return normalize(res)
 end
 
 
