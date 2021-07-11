@@ -234,6 +234,14 @@ function BaseTest:assert_not_nil(x)
 end
 
 
+function BaseTest:assert_pattern(text, pattern)
+  text = tostring(text)
+  if not text:find(pattern) then
+    error(('expected pattern %q to be found in: %q'):format(pattern, text))
+  end
+end
+
+
 function BaseTest:assert_type(x, typ)
   assert(({['nil']=1, number=1, string=1, boolean=1, table=1, ['function']=1, thread=1, userdata=1})[typ])
   if type(x) ~= typ then

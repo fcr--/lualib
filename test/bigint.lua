@@ -384,7 +384,41 @@ end
 
 
 function BigIntTest:test_lshift()
-  -- TODO: write test cases!
+  self:assert_equal(new(0xffff):lshift(1), new(0x1fffe))
+  self:assert_equal(bigint.one:lshift(1), new(2))
+  self:assert_equal(new(0x1234):lshift(0), new(0x1234))
+  self:assert_equal(new(0x12345678):lshift(0), new(0x12345678))
+  self:assert_equal(new'0x123456789abc':lshift(0), new'0x123456789abc')
+  self:assert_equal(new(0x1234):lshift(4), new(0x12340))
+  self:assert_equal(new(0x12345678):lshift(4), new'0x123456780')
+  self:assert_equal(new'0x123456789abc':lshift(4), new'0x123456789abc0')
+  self:assert_equal(new(0x1234):lshift(16), new(0x12340000))
+  self:assert_equal(new(0x12345678):lshift(16), new'0x123456780000')
+  self:assert_equal(new'0x123456789abc':lshift(16), new'0x123456789abc0000')
+  self:assert_equal(new(0x1234):lshift(20), new'0x123400000')
+  self:assert_equal(new(0x12345678):lshift(20), new'0x1234567800000')
+  self:assert_equal(new'0x123456789abc':lshift(20), new'0x123456789abc00000')
+end
+
+
+function BigIntTest:test_mutable_lshift()
+  local n = new(0x12345678)
+  n:mutable_lshift(1)
+  self:assert_equal(n, new(0x2468acf0))
+  n:mutable_lshift(3)
+  self:assert_equal(n, new'0x123456780')
+  n:mutable_lshift(0)
+  self:assert_equal(n, new'0x123456780')
+  n:mutable_lshift(12)
+  self:assert_equal(n, new'0x123456780000')
+  n = n + new(0x9abc)
+  n:mutable_lshift(16)
+  self:assert_equal(n, new'0x123456789abc0000')
+  n:mutable_lshift(20)
+  self:assert_equal(n, new'0x123456789abc000000000')
+  n = -n
+  n:mutable_lshift(4)
+  self:assert_equal(n, new'-0x123456789abc0000000000')
 end
 
 
@@ -431,9 +465,28 @@ function BigIntTest:test_pow()
 end
 
 
+function BigIntTest:test_powmod()
+  self:assert_equal(new(672):powmod(new(815), new(517)), new(56))
+  self:assert_equal(new(0x78496217):powmod(new(0x67867891), new(2)), bigint.one)
+  self:assert_equal(new(725403256838):powmod(new(429322590726), new(17034810993)), new(14853464623))
+  self:assert_equal(new(-2):powmod(new(3), new(7)), new(6))
+  local err = self:assert_error(bigint.one.powmod, bigint.one, bigint.one, bigint.zero)
+  self:assert_pattern(err, 'division by zero')
+  --self:assert_equal(n1:powmod(n2, new(17034810993)), new(9253199997))
+  --self:assert_equal(n1:powmod(n2, n1+n2), new(9253199997)) -- quite slow,
+end
+
+
 function BigIntTest:test_rshift()
   self:assert_equal(bigint.zero:rshift(0), bigint.zero)
-  -- TODO
+  self:assert_equal(new'0x12345678':rshift(0), new'0x12345678')
+  self:assert_equal(new(0xffff0000):rshift(1), new(0x7fff8000))
+  self:assert_equal(new'0x123456789abc':rshift(1), new'0x91a2b3c4d5e')
+  self:assert_equal(new'0x123456789abc':rshift(4), new'0x123456789ab')
+  self:assert_equal(new'0x123456789abc':rshift(12), new'0x123456789')
+  self:assert_equal(new'0x123456789abc':rshift(16), new'0x12345678')
+  self:assert_equal(new'0x123456789abc':rshift(20), new'0x1234567')
+  self:assert_equal(new'0x123456789abc':rshift(741), bigint.zero)
 end
 
 

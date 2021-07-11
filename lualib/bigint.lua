@@ -381,15 +381,14 @@ end
 
 function bigint:divqr(div)
   assert(div.sign ~= 0, 'division by zero')
-  local rem = zero
+  local rem = empty(1)
   local quo = empty(1)
   for b = self:lenbits() - 1, 0, -1 do
     local i = math.floor(b / atombits) + 1
     local bitmask = lshift(1, band(b, atombits - 1))
-    rem = rem:lshift(1)
+    rem:mutable_lshift(1)
     if band(self[i], bitmask) ~= 0 then
-      rem = setsign(copy_if_singleton(rem), 1)
-      rem[1] = bor(rem[1] or 0, 1)
+      rem[1] = bor(setsign(rem, 1)[1] or 0, 1)
     end
     if rem:abscmp(div) >= 0 then
       rem = raw_sub(rem, div)
@@ -672,6 +671,29 @@ function bigint:lshift(n)
 end
 
 
+function bigint:mutable_lshift(n)
+  local natoms, nbits = math.floor(n / atombits), n % atombits
+  local len = #self
+  -- start with the special case at #self + 1, as we may need to insert a new value
+  local tmp = self[len] or 0
+  local value = rshift(tmp, atombits - nbits)
+  if value ~= 0 then
+    self[len+1 + natoms] = value
+  end
+
+  -- at each step we will be inserting the next value in the least significant bits
+  for i = len, 2, -1 do
+    tmp = bor(lshift(tmp, atombits), self[i-1] or 0)
+    self[i + natoms] = band(rshift(tmp, atombits - nbits), atommask)
+  end
+  self[1 + natoms] = band(lshift(tmp, nbits), atommask)
+  for i = 1, natoms do
+    self[i] = 0
+  end
+  normalize(self)
+end
+
+
 function bigint:mutable_unsigned_add(other)
   local carry = 0
   for i = 1, #other do
@@ -705,9 +727,8 @@ end
 function bigint:pow(power)
   assert(power.sign >= 0, 'pow does not support roots')
   if power.sign == 0 then return one end
-  local res = one
+  local res = power:isodd() and self or one
 
-  if power:isodd() then res = res * self end
   repeat
     power = power:rshift(1)
     self = self * self
@@ -718,7 +739,16 @@ end
 
 
 function bigint:powmod(power, mod)
-  error 'TODO: implement'
+  if power.sign == 0 then return one end
+  if self:abscmp(mod) > 0 then self = self % mod end
+  local res = power:isodd() and self or one
+
+  repeat
+    power = power:rshift(1)
+    self = self * self % mod
+    if power:isodd() then res = (res * self) % mod end
+  until power.sign == 0
+  return res
 end
 
 
@@ -726,7 +756,7 @@ function bigint:rshift(n)
   local res = empty(self.sign)
   local natoms, nbits = math.floor(n / atombits), n % atombits
   for i = #self, 1 + natoms, -1 do
-    res[i - natoms] = rshift(bor(lshift(self[i+1] or 0, atombits), self[i]), nbits)
+    res[i - natoms] = band(rshift(bor(lshift(self[i+1] or 0, atombits), self[i]), nbits), atommask)
   end
   return normalize(res)
 end
