@@ -232,6 +232,7 @@ function mt:__sub(other)
   other.sign = -other.sign
   local res = self + other
   other.sign = -other.sign
+  if rawequal(other, res) then return -other end
   return res
 end
 
@@ -409,7 +410,7 @@ function bigint:divqr_atom(d)
     return q, -r
   end
   assert(d > 0, 'division by zero')
-  if d == 1 or self.sign == 0 then return self end
+  if d == 1 or self.sign == 0 then return self, 0 end
   local res = empty(self.sign)
   local remainder = 0
   for i = #self, 1, -1 do
@@ -422,23 +423,23 @@ end
 
 
 function bigint:gcd(other)
-  if self.sign == 0 or other.sign == 0 then
-    return one
-  end
   if self.sign < 0 then self = self:abs() end
   if other.sign < 0 then other = other:abs() end
 
-  local pr, r = self, other
-  local ps, s = one, zero
-  local pt, t = zero, one
-  while r.sign ~= 0 do
-    local q = pr / r
-    pr, r = r, pr - q*r
-    ps, s = s, ps - q*s
-    pt, t = t, pt - q*t
+  local function rec(a, b)
+    if a.sign == 0 then
+      return b, zero, one
+    end
+    local q, r = b:divqr(a)
+    local g, x, y = rec(r, a)
+    return g, y - q * x, x
   end
-  if ps.sign < 0 then ps = ps + other:abs() end
-  return pr, ps, pt
+  return rec(self, other)
+end
+
+
+function bigint:invmod(mod)
+  return select(2, self:gcd(mod)) % mod
 end
 
 

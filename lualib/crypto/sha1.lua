@@ -1,5 +1,3 @@
-local oo = require 'lualib.oo'
-
 local bit = bit or require 'bit32'
 
 local band = bit.band

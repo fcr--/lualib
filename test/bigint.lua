@@ -233,6 +233,7 @@ function BigIntTest:test___sub()
   self:assert_equal(new(-1) - new(-1), bigint.zero)
   self:assert_equal(bigint.one - new(-1), new(2))
   self:assert_equal(new(-1) - bigint.one, new(-2))
+  self:assert_equal(bigint.zero - bigint.one, new(-1))
 end
 
 
@@ -331,6 +332,20 @@ function BigIntTest:test_divqr()
   self:assert_deep_equal(
     {new'0x798a9b789c7578ef076a86b890c675de52534f1':divqr(new'0xdeadcafe1234')},
     {new'0x8bba855615feb83ca0a4d876ee0', new'0xac95dd96ef71'})
+end
+
+
+function BigIntTest:test_gcd()
+  self:assert_deep_equal({n1:gcd(n1)}, {n1, bigint.one, bigint.zero})
+  self:assert_deep_equal({new(718):gcd(new(1079))}, {bigint.one, new(269), new(-179)})
+  self:assert_deep_equal({new(83):gcd(new(25))}, {bigint.one, new(-3), new(10)})
+  self:assert_deep_equal({new(1899781485):gcd(new(333719637))}, {new(3), new(-4389797), new(24990004)})
+end
+
+
+function BigIntTest:test_invmod()
+  self:assert_equal(new(718):invmod(new(1079)), new(269))
+  self:assert_equal(new(83):invmod(new(25)), new(22))
 end
 
 
