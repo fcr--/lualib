@@ -5,6 +5,9 @@ local bnot = bit.bnot
 local band = bit.band
 local rshift = bit.rshift
 local lshift = bit.lshift
+local rol = bit.rol or function(w, offset)
+  return bxor(lshift(w, offset), rshift(w, 32-offset))
+end
 
 
 local sbox = {
@@ -69,7 +72,7 @@ local function keyschedule(key)
   end
   for i = n, 4*rounds-1 do
     if i%n == 0 then
-      W[i+1] = bxor(W[i-n+1], subbytes(bit.rol(W[i], 8)), keyschedule_rcon[i/n])
+      W[i+1] = bxor(W[i-n+1], subbytes(rol(W[i], 8)), keyschedule_rcon[i/n])
     elseif n > 6 and i%n == 4 then
       W[i+1] = bxor(W[i-n+1], subbytes(W[i]))
     else
