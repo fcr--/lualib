@@ -292,7 +292,8 @@ end
 -- Basic Multiplication:
 function bigint:bmul(other)
   local res = empty(self.sign * other.sign)
-  if res.sign == 0 then return res end
+  -- it's already constructed...
+  if res.sign == 0 then return normalize(res) end
   for j = 1, #other do
     local carry = 0
     for i = 1, #self do
