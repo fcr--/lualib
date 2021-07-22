@@ -10,6 +10,14 @@ local rol = bit.rol or function(w, offset)
 end
 
 
+local function word2bytes(w)
+  return rshift(w, 24), band(rshift(w, 16), 255), band(rshift(w, 8), 255), band(w, 255)
+end
+local function bytes2word(b0, b1, b2, b3)
+  return bxor(lshift(b0, 24), lshift(band(b1, 255), 16), lshift(band(b2, 255), 8), band(b3, 255))
+end
+
+
 local sbox = {
   [0]=0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
   0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -33,29 +41,127 @@ local sbox_inv = {}
 for i, v in pairs(sbox) do sbox_inv[v] = i end
 
 local function subbytes(a)
-  local x0 = band(a, 255)
-  local x1 = band(rshift(a, 8), 255)
-  local x2 = band(rshift(a, 16), 255)
-  local x3 = rshift(a, 24)
-  return bxor(lshift(sbox[x3], 24), lshift(sbox[x2], 16), lshift(sbox[x1], 8), sbox[x0])
+  local x0, x1, x2, x3 = word2bytes(a)
+  return bytes2word(sbox[x0], sbox[x1], sbox[x2], sbox[x3])
 end
 
-local function mixcolumns(a0, a1, a2, a3)
-  local r0, r1, r2, r3 = 0, 0, 0, 0
-  for i = 0, 24, 8 do
-    local x0, x1, x2, x3 = rshift(a0, 24), rshift(a1, 24), rshift(a2, 24), rshift(a3, 24)
-    a0, a1, a2, a3 = lshift(a0, 8), lshift(a1, 24), lshift(a2, 24), lshift(a3, 24)
-    local y0 = x0 >= 128 and bxor(x0+x0, 0x11b) or x0+x0
-    local y1 = x1 >= 128 and bxor(x1+x1, 0x11b) or x1+x1
-    local y2 = x2 >= 128 and bxor(x2+x2, 0x11b) or x2+x2
-    local y3 = x3 >= 128 and bxor(x3+x3, 0x11b) or x3+x3
-    r0 = bxor(lshift(r0, 8), y0, y1, x1, x2, x3)
-    r1 = bxor(lshift(r1, 8), x0, y1, y2, x2, x3)
-    r2 = bxor(lshift(r2, 8), x0, x1, y2, y3, x3)
-    r3 = bxor(lshift(r3, 8), y0, x0, x1, x2, y3)
-  end
-  return r0, r1, r2, r3
+local function subbytes_inv(a)
+  local x0, x1, x2, x3 = word2bytes(a)
+  return bytes2word(sbox_inv[x0], sbox_inv[x1], sbox_inv[x2], sbox_inv[x3])
 end
+
+
+local function shiftrows(c0, c1, c2, c3)
+  -- c0, c1, c2, c3: columns (left to right) of the state to rotate.
+  local c00, c01, c02, c03 = word2bytes(c0)
+  local c10, c11, c12, c13 = word2bytes(c1)
+  local c20, c21, c22, c23 = word2bytes(c2)
+  local c30, c31, c32, c33 = word2bytes(c3)
+  return bytes2word(c00, c11, c22, c33),
+    bytes2word(c10, c21, c32, c03),
+    bytes2word(c20, c31, c02, c13),
+    bytes2word(c30, c01, c12, c23)
+end
+
+local function shiftrows_inv(c0, c1, c2, c3)
+  -- c0, c1, c2, c3: columns (left to right) of the state to rotate.
+  local c00, c01, c02, c03 = word2bytes(c0)
+  local c10, c11, c12, c13 = word2bytes(c1)
+  local c20, c21, c22, c23 = word2bytes(c2)
+  local c30, c31, c32, c33 = word2bytes(c3)
+  return bytes2word(c00, c31, c22, c13),
+    bytes2word(c10, c01, c32, c23),
+    bytes2word(c20, c11, c02, c33),
+    bytes2word(c30, c21, c12, c03)
+end
+
+
+local function mixcolumn(col)
+  -- most significant byte contains the byte for the uppermost row.
+  local x0, x1, x2, x3 = word2bytes(col)
+  -- yi = 2*xi (mod ζ⁸+ζ⁴+ζ³+ζ+1)
+  local y0 = x0 >= 128 and bxor(x0+x0, 0x11b) or x0+x0
+  local y1 = x1 >= 128 and bxor(x1+x1, 0x11b) or x1+x1
+  local y2 = x2 >= 128 and bxor(x2+x2, 0x11b) or x2+x2
+  local y3 = x3 >= 128 and bxor(x3+x3, 0x11b) or x3+x3
+  return bytes2word(
+    bxor(y0, y1, x1, x2, x3),
+    bxor(x0, y1, y2, x2, x3),
+    bxor(x0, x1, y2, y3, x3),
+    bxor(y0, x0, x1, x2, y3))
+end
+
+local function mixcolumn_inv(col)
+  -- most significant byte contains the byte for the uppermost row.
+  local x0, x1, x2, x3 = word2bytes(col)
+  -- yi = 2*xi (mod ζ⁸+ζ⁴+ζ³+ζ+1), zi=4*xi, w=8*xi
+  local y0 = x0 >= 128 and bxor(x0+x0, 0x11b) or x0+x0
+  local y1 = x1 >= 128 and bxor(x1+x1, 0x11b) or x1+x1
+  local y2 = x2 >= 128 and bxor(x2+x2, 0x11b) or x2+x2
+  local y3 = x3 >= 128 and bxor(x3+x3, 0x11b) or x3+x3
+
+  local z0 = y0 >= 128 and bxor(y0+y0, 0x11b) or y0+y0
+  local z1 = y1 >= 128 and bxor(y1+y1, 0x11b) or y1+y1
+  local z2 = y2 >= 128 and bxor(y2+y2, 0x11b) or y2+y2
+  local z3 = y3 >= 128 and bxor(y3+y3, 0x11b) or y3+y3
+
+  local w0 = z0 >= 128 and bxor(z0+z0, 0x11b) or z0+z0
+  local w1 = z1 >= 128 and bxor(z1+z1, 0x11b) or z1+z1
+  local w2 = z2 >= 128 and bxor(z2+z2, 0x11b) or z2+z2
+  local w3 = z3 >= 128 and bxor(z3+z3, 0x11b) or z3+z3
+  return bytes2word(
+    bxor(w0, z0, y0,  w1, y1, x1,  w2, z2, x2,  w3, x3),  -- 0e 0b 0d 09 = 1110 1011 1101 1001
+    bxor(w0, x0,  w1, z1, y1,  w2, y2, x2,  w3, z3, x3),  -- 09 0e 0b 0d = 1001 1110 1011 1101
+    bxor(w0, z0, x0,  w1, x1,  w2, z2, y2,  w3, y3, x3),  -- 0d 09 0e 0b = 1101 1001 1110 1011
+    bxor(w0, y0, x0,  w1, z1, x1,  w2, x2,  w3, z3, y3))  -- 0b 0d 09 0e = 1011 1101 1001 1110
+end
+
+
+local function addroundkey(W, round, c0, c1, c2, c3)
+  -- W is the array returned by keyschedule,
+  -- round is the round number 0..(10, 12, 14)
+  -- c0, c1, c2, c3: columns of the state
+  local i = 4*round + 1
+  return bxor(c0, W[i]), bxor(c1, W[i+1]), bxor(c2, W[i+2]), bxor(c3, W[i+3])
+end
+
+
+local function cipher(W, c0, c1, c2, c3)
+  c0, c1, c2, c3 = addroundkey(W, 0, c0, c1, c2, c3)
+
+  local Nr = #W/4-1  -- since #W == 4*(Nr+1)
+  for round = 1, Nr-1 do
+    c0, c1, c2, c3 = subbytes(c0), subbytes(c1), subbytes(c2), subbytes(c3)
+    c0, c1, c2, c3 = shiftrows(c0, c1, c2, c3)
+    c0, c1, c2, c3 = mixcolumn(c0), mixcolumn(c1), mixcolumn(c2), mixcolumn(c3)
+    c0, c1, c2, c3 = addroundkey(W, round, c0, c1, c2, c3)
+  end
+
+  c0, c1, c2, c3 = subbytes(c0), subbytes(c1), subbytes(c2), subbytes(c3)
+  c0, c1, c2, c3 = shiftrows(c0, c1, c2, c3)
+  return addroundkey(W, Nr, c0, c1, c2, c3)
+end
+
+-- This function decrypts a single aes block, where W is the result of
+-- keyschedule and c0, c1, c3, c3 is the cipher text represented as 4 32bit
+-- integers of the AES state columns.
+--   The result is the plain text as 4 32bit integers.
+local function cipher_inv(W, c0, c1, c2, c3)
+  local Nr = #W/4-1  -- since #W == 4*(Nr+1)
+  c0, c1, c2, c3 = addroundkey(W, Nr, c0, c1, c2, c3)
+
+  for round = Nr-1, 1, -1 do
+    c0, c1, c2, c3 = shiftrows_inv(c0, c1, c2, c3)
+    c0, c1, c2, c3 = subbytes_inv(c0), subbytes_inv(c1), subbytes_inv(c2), subbytes_inv(c3)
+    c0, c1, c2, c3 = addroundkey(W, round, c0, c1, c2, c3)
+    c0, c1, c2, c3 = mixcolumn_inv(c0), mixcolumn_inv(c1), mixcolumn_inv(c2), mixcolumn_inv(c3)
+  end
+
+  c0, c1, c2, c3 = shiftrows_inv(c0, c1, c2, c3)
+  c0, c1, c2, c3 = subbytes_inv(c0), subbytes_inv(c1), subbytes_inv(c2), subbytes_inv(c3)
+  return addroundkey(W, 0, c0, c1, c2, c3)
+end
+
 
 local keyschedule_rcon = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36}
 for i, v in ipairs(keyschedule_rcon) do keyschedule_rcon[i] = lshift(v, 24) end
@@ -67,8 +173,7 @@ local function keyschedule(key)
   local rounds = ({[4]=11, [6]=13, [8]=15})[n]
   local W = {}
   for i = 1, n do
-    local b0, b1, b2, b3 = key:byte(4*i-3, 4*i)
-    W[i] = bxor(lshift(b0, 24), lshift(b1, 16), lshift(b2, 8), b3)
+    W[i] = bytes2word(key:byte(4*i-3, 4*i))
   end
   for i = n, 4*rounds-1 do
     if i%n == 0 then
@@ -82,8 +187,13 @@ local function keyschedule(key)
   return W
 end
 
+
 return {
   subbytes = subbytes,
-  mixcolumn = mixcolumns,
+  shiftrows = shiftrows,
+  mixcolumn = mixcolumn,
+  addroundkey = addroundkey,
+  cipher = cipher,
+  cipher_inv = cipher_inv,
   keyschedule = keyschedule,
 }

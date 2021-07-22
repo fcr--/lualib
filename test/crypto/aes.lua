@@ -6,13 +6,14 @@ local bit = bit or require 'bit32'
 local AesTest = oo.class(BaseTest)
 
 
-function AesTest:test_keyschedule()
-  local function normalize(t)
-    local res = {}
-    for k, v in pairs(t) do res[k] = bit.bor(v, 0) end
-    return res
-  end
+local function normalize(t)
+  local res = {}
+  for k, v in pairs(t) do res[k] = bit.bor(v, 0) end
+  return res
+end
 
+
+function AesTest:test_keyschedule()
   -- test vectors from: https://www.samiam.org/key-schedule.html
   self:assert_deep_equal(aes.keyschedule(('\0'):rep(16)), normalize {
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -76,6 +77,38 @@ function AesTest:test_keyschedule()
     0x4e5a6699, 0xa9f24fe0, 0x7e572baa, 0xcdf8cdea,
     0x24fc79cc, 0xbf0979e9, 0x371ac23c, 0x6d68de36,
   })
+end
+
+
+function AesTest:test_cipher()
+  -- examples from NIST.FIPS.197:
+  local W = aes.keyschedule(('2b7e151628aed2a6abf7158809cf4f3c')
+    :gsub('..', function(h)return string.char(tonumber(h, 16)) end))
+  self:assert_deep_equal({aes.cipher(W, 0x3243f6a8, 0x885a308d, 0x313198a2, 0xe0370734)},
+    normalize {0x3925841d, 0x02dc09fb, 0xdc118597, 0x196a0b32})
+  self:assert_deep_equal({aes.cipher_inv(W, 0x3925841d, 0x02dc09fb, 0xdc118597, 0x196a0b32)},
+    normalize {0x3243f6a8, 0x885a308d, 0x313198a2, 0xe0370734})
+
+  W = aes.keyschedule(('000102030405060708090a0b0c0d0e0f')
+    :gsub('..', function(h)return string.char(tonumber(h, 16)) end))
+  self:assert_deep_equal({aes.cipher(W, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff)},
+    normalize {0x69c4e0d8, 0x6a7b0430, 0xd8cdb780, 0x70b4c55a})
+  self:assert_deep_equal({aes.cipher_inv(W, 0x69c4e0d8, 0x6a7b0430, 0xd8cdb780, 0x70b4c55a)},
+    normalize {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff})
+
+  W = aes.keyschedule(('000102030405060708090a0b0c0d0e0f1011121314151617')
+    :gsub('..', function(h)return string.char(tonumber(h, 16)) end))
+  self:assert_deep_equal({aes.cipher(W, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff)},
+    normalize {0xdda97ca4, 0x864cdfe0, 0x6eaf70a0, 0xec0d7191})
+  self:assert_deep_equal({aes.cipher_inv(W, 0xdda97ca4, 0x864cdfe0, 0x6eaf70a0, 0xec0d7191)},
+    normalize {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff})
+
+  W = aes.keyschedule(('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')
+    :gsub('..', function(h)return string.char(tonumber(h, 16)) end))
+  self:assert_deep_equal({aes.cipher(W, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff)},
+    normalize {0x8ea2b7ca, 0x516745bf, 0xeafc4990, 0x4b496089})
+  self:assert_deep_equal({aes.cipher_inv(W, 0x8ea2b7ca, 0x516745bf, 0xeafc4990, 0x4b496089)},
+    normalize {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff})
 end
 
 
