@@ -114,6 +114,41 @@ function empty(sign)
 end
 
 
+local function fromstring(fmt, str)
+  if fmt == 'dec' then
+    return new(str)
+  elseif fmt == 'hex' then
+    return new(str:find '^%-?0x' and str or str:gsub('^%-?', '%00x'))
+  elseif fmt == 'raw' then
+    assert(atombits == 16, 'not supported for this atombits value')
+    local b = str:byte(1)
+    if not b then return zero end
+    local res = empty(b < 128 and 1 or -1)
+    if res.sign == 1 then
+      for i = #str-1, 1, -2 do
+        local hi, lo = str:byte(i, i+1)
+        res[#res+1] = 256*hi + lo
+      end
+      if #str % 2 == 1 then
+        res[#res+1] = b
+      end
+    else -- negative
+      for i = #str-1, 1, -2 do
+        local hi, lo = str:byte(i, i+1)
+        res[#res+1] = bxor(256*hi + lo, 0xffff)
+      end
+      if #str % 2 == 1 then
+        res[#res+1] = bxor(b, 0xff)
+      end
+      res:mutable_unsigned_add_atom(1)
+    end
+    return res
+  else
+    error 'unsupported format'
+  end
+end
+
+
 -- mutates x removing trailing zeros and adjusting the sign to 0 if necessary
 function normalize(x)
   for i = #x, 1, -1 do
@@ -878,6 +913,7 @@ return {
   atombits = atombits,
   atommask = atommask,
   crt = crt,
+  fromstring = fromstring,
   mt = mt,
   new = new,
   one = one,

@@ -32,6 +32,18 @@ function RSA:bigint_encrypt(m)
 end
 
 
+function RSA:bigint_sign(m)
+  -- signing in RSA is powmodding with the private key (aka decryption):
+  return self:bigint_decrypt(m)
+end
+
+
+function RSA:bigint_is_signature_valid(m, s)
+  -- to verify the signature is powmodding with the public key (aka encryption):
+  return m == self:bigint_encrypt(s)
+end
+
+
 function RSA:bigint_decrypt(c)
   -- using the Chinese Remainder Theorem:
   if self.p and self.q then

@@ -20,6 +20,27 @@ function RSATest:test_rsa()
 end
 
 
+function RSATest:test_decrypt_without_pq()
+  local rsa_full = RSA.setup(p1, p2)
+  local rsa_public = RSA:new{n=rsa_full.n}
+  local rsa_private = RSA:new{n=rsa_full.n, d=rsa_full.d}
+  local m = bigint.fromstring('raw', 'Hello!')
+  local c = rsa_public:bigint_encrypt(m)
+  -- this should be slower than using rsa_full because we cannot use CRT:
+  self:assert_equal(rsa_private:bigint_decrypt(c), m)
+end
+
+
+function RSATest:test_signature()
+  local rsa_full = RSA.setup(p1, p2)
+  local rsa_public = RSA:new{n=rsa_full.n}
+  local m = bigint.fromstring('raw', 'Hello!')
+  local s = rsa_full:bigint_sign(m)
+  self:assert_equal(rsa_public:bigint_is_signature_valid(m, s), true)
+  self:assert_equal(rsa_public:bigint_is_signature_valid(m, s+bigint.one), false)
+end
+
+
 RSATest:run_if_main()
 
 
