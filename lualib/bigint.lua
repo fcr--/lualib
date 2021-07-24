@@ -799,6 +799,26 @@ function bigint:rshift(n)
 end
 
 
+function bigint:sqrt()
+  if self.sign == 0 then return zero end
+  assert(self.sign >= 0, 'complex numbers are not supported')
+  local x0 = one:lshift(rshift(self:lenbits(), 1))
+  local xk = x0
+  local xkminus1 = zero
+  local it = 0
+  while true do
+    local xk1 = (xk + self / xk):rshift(1)
+    local delta = xk - xk1
+    if delta.sign == 0 or delta == one and xk1 == xkminus1 then
+      -- detecting a fix point or a period 2 oscilation between xk1=⌊√n⌋ and xk=1+⌊√n⌋
+      return xk1
+    end
+    it = it + 1
+    xkminus1, xk = xk, xk1
+  end
+end
+
+
 function bigint:tonumber()
   local sum = 0
   for i = #self, 1, -1 do

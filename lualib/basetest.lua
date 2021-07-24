@@ -190,6 +190,20 @@ function BaseTest:cleanup()
 end
 
 
+function BaseTest:assert_greater(x, y)
+  if x <= y then
+    error(('expected %s > %s'):format(x, y))
+  end
+end
+
+
+function BaseTest:assert_greater_or_equal(x, y)
+  if x < y then
+    error(('expected %s >= %s'):format(x, y))
+  end
+end
+
+
 function BaseTest:assert_equal(x, y)
   if x ~= y then
     error(('expected %s == %s'):format(x, y))
@@ -210,6 +224,20 @@ function BaseTest:assert_error(fn, ...)
     -- the error arguments are returned:
     return ...
   end)(pcall(fn, ...))
+end
+
+
+function BaseTest:assert_less(x, y)
+  if x >= y then
+    error(('expected %s < %s'):format(x, y))
+  end
+end
+
+
+function BaseTest:assert_less_or_equal(x, y)
+  if x > y then
+    error(('expected %s <= %s'):format(x, y))
+  end
 end
 
 

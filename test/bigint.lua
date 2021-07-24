@@ -511,6 +511,24 @@ function BigIntTest:test_rshift()
 end
 
 
+function BigIntTest:test_sqrt()
+  local err = self:assert_error(bigint.one.sqrt, -bigint.one)
+  self:assert_pattern(err, 'not supported')
+  self:assert_equal(bigint.zero:sqrt(), bigint.zero)
+  self:assert_equal(bigint.one:sqrt(), bigint.one)
+  self:assert_equal(new(2):sqrt(), bigint.one)
+  self:assert_equal(new(3):sqrt(), bigint.one)
+  self:assert_equal(new(4):sqrt(), new(2))
+  self:assert_equal(new(5):sqrt(), new(2))
+  self:assert_equal(new(80):sqrt(), new(8))
+  self:assert_equal(new(81):sqrt(), new(9))
+  local n1sqrt = n1:sqrt()
+  local n1sqrtup = n1sqrt + bigint.one
+  self:assert_less_or_equal(n1sqrt * n1sqrt, n1)
+  self:assert_less_or_equal(n1, n1sqrtup * n1sqrtup)
+end
+
+
 function BigIntTest:test_tonumber()
   self:assert_equal(bigint.zero:tonumber(), 0)
   self:assert_equal(new(438912):tonumber(), 438912)
