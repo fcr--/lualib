@@ -142,7 +142,7 @@ local function fromstring(fmt, str)
       end
       res:mutable_unsigned_add_atom(1)
     end
-    return res
+    return normalize(res)
   else
     error 'unsupported format'
   end
