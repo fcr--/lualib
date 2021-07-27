@@ -36,7 +36,7 @@ local function decode(data, allow_errors)
       return c
     end)
     -- there may be an additional trailing byte:
-    if data % 3 == 1 then data:sub(1, #data-1) end
+    if #data % 3 == 1 then data:sub(1, #data-1) end
   end
 
   for i = 1, #data, 3 do
@@ -51,6 +51,7 @@ local function decode(data, allow_errors)
       local i3 = byte_to_index[b3]
       if not i3 then error('invalid byte '..b3..' at position '..i+2) end
       local n = (i3*45 + i2)*45 + i1
+      if n > 65535 then error('invalid 3 byte sequence '..n..' at position '..i) end
       res[#res+1] = string.char(math.floor(n / 256), n % 256)
     end
   end
