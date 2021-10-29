@@ -120,6 +120,10 @@ local record BigInt
   -- constructs a new bigint:
   new: function(n: integer | string): bigint
 
+  -- returns a number between 0 and 2^bits-1,
+  -- if safe is true data is read from /dev/random, otherwise urandom is used.
+  randombits: function(bits: integer, safe: nil | boolean): bigint
+
   one: bigint
   zero: bigint
 end
