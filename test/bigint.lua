@@ -187,6 +187,37 @@ function BigIntTest:test_new()
 end
 
 
+function BigIntTest:test_randombits()
+    local old_open = io.open
+    local function mock_function()
+        local mock = {call_count = 0, args_list = {}}
+        return setmetatable(mock, {
+            __call = function(obj, ...)
+                mock.args = {...}
+                mock.args_list[#mock.args_list + 1] = mock.args
+                mock.call_count = mock.call_count + 1
+                return mock.res
+            end
+        })
+    end
+    local function reset_mock()
+        io.open = mock_function()
+        io.open.res = {
+            read = mock_function(),
+            close = mock_function(),
+        }
+    end
+    reset_mock()
+    local mock_fd = io.open.res
+    mock_fd.read.res = 'Hello'
+    self:assert_equal(bigint.randombits(36), bigint.fromstring('raw', '\015lleH'))
+    self:assert_deep_equal(io.open.args_list, {{'/dev/urandom', 'rb'}})
+    self:assert_deep_equal(mock_fd.read.args_list, {{mock_fd, 5}})
+    self:assert_deep_equal(mock_fd.close.args_list, {{mock_fd}})
+    io.open = old_open
+end
+
+
 function BigIntTest:test___add()
   self:assert_equal(new(2) + new(5), new(7))
   self:assert_equal(new(2) + new(-5), new(-3))

@@ -160,6 +160,29 @@ function normalize(x)
 end
 
 
+-- returns a number between 0 and 2^bits-1
+local function randombits(bits, safe)
+    local fd = assert(io.open(safe and '/dev/random' or '/dev/urandom', 'rb'))
+    local rawdata = fd:read(math.ceil(bits / 8))
+    fd:close()
+
+    local res = empty(1)
+    for i = 1, math.floor(bits/16) do
+        local lo, hi = rawdata:byte(2*i-1, 2*i)
+        res[i] = 256*hi + lo
+    end
+    local rembits = bits % 16
+    if rembits > 8 then
+        local lo, hi = rawdata:byte(#rawdata-1, #rawdata)
+        res[#res+1] = band(256*hi + lo, lshift(1, rembits)-1)
+    elseif rembits > 0 then
+        local lo = rawdata:byte(#rawdata)
+        res[#res+1] = band(lo, lshift(1, rembits)-1)
+    end
+    return normalize(res)
+end
+
+
 -- returns the sign of the first argument:
 local function raw_add(x, y)
   local res = empty(x.sign)
@@ -937,5 +960,6 @@ return {
   mt = mt,
   new = new,
   one = one,
+  randombits = randombits,
   zero = zero,
 }
