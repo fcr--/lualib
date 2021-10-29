@@ -3,24 +3,24 @@
 
 Example to start with:
 
-    local BaseTest = require 'lualib.basetest'
-    local oo = require 'lualib.oo'
+   local BaseTest = require 'lualib.basetest'
+   local oo = require 'lualib.oo'
 
-    local MyTest = oo.class(BaseTest)
+   local MyTest = oo.class(BaseTest)
 
-    function MyTest:test_something()
+   function MyTest:test_something()
       self:assert_equal(42, tonumber '42')
       self:assert_nil(('y'):match 'x')
       self:assert_not_nil(42)
       self:assert_type(self.assert_type, 'function')
       self:assert_deep_equal({42, b={117, ''}}, {42, b={117, ''}})
-    end
+   end
 
-    ... -- add more tests
+   ... -- add more tests
 
-    MyTest:run_if_main()
+   MyTest:run_if_main()
 
-    return MyTest
+   return MyTest
 ]]
 
 local oo = require 'lualib.oo'
