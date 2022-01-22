@@ -336,7 +336,7 @@ end
 function bigint:bcount()
    local weights4bit = {[0]=0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4}
    local sum = 0
-   for i, x in ipairs(self) do
+   for _, x in ipairs(self) do
       sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
       sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
       sum = sum + weights4bit[band(x, 15)]; x = rshift(x, 4)
@@ -637,12 +637,12 @@ function bigint:kmul_unrolled2(other, karatsuba_threshold)
    local tself = build_karatsuba_tree(self, length, depth)
    local tother = build_karatsuba_tree(other, length, depth)
 
-   local function karatsuba_rec(node1, node2, length)
+   local function karatsuba_rec(node1, node2, len)
       if not node1.lo or not node2.lo then
          return node1.n:bmul(node2.n)
       end
 
-      local m = math.floor(length / 2 + 0.6)
+      local m = math.floor(len / 2 + 0.6)
       local p2 = karatsuba_rec(node1.hi, node2.hi, m)
       local p0 = karatsuba_rec(node1.lo, node2.lo, m)
       local p1 = (node1.hi.n + node1.lo.n):kmul_unrolled2(node2.hi.n + node2.lo.n, karatsuba_threshold)  -- - p2 - p0
