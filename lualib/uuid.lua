@@ -34,8 +34,11 @@ function UUID:bytes()
 end
 
 -- TODO:
---   implement uuid1 to uuid5
+--   implement uuid v1 to v5
 
 return {
-  UUID = UUID
+  UUID = UUID,
+  pattern = '%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x',
+  pattern_ver = '%x%x%x%x%x%x%x%x%-%x%x%x%x%-(%x)%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x',
+  pattern_full = '^%x%x%x%x%x%x%x%x%-%x%x%x%x%-(%x)%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$',
 }
