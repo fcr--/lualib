@@ -4,6 +4,7 @@ local oo = require 'lualib.oo'
 
 local Tests = oo.class(BaseTest)
   :link_class(require 'test.base45')
+  :link_class(require 'test.base64')
   :link_class(require 'test.bigint')
   :link_class(require 'test.crypto.tests')
   :link_class(require 'test.oo')
