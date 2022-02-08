@@ -2,7 +2,13 @@ local bigint = require 'lualib.bigint'.bigint
 
 local record rsa
   record Rsa
+    bigint_encrypt: function(Rsa, m: bigint): bigint
 
+    -- signing in RSA is powmodding with the private key:
+    bigint_sign: function(Rsa, m: bigint): bigint
+    bigint_is_signature_valid: function(Rsa, m: bigint, s: bigint): boolean
+
+    bigint_decrypt: function(Rsa, c: bigint): bigint
   end
 
   record rsa_options
@@ -14,14 +20,6 @@ local record rsa
     -- p&q (the prime factors of n) are optional, they accelerate decryption:
     p: bigint
     q: bigint
-
-    bigint_encrypt: function(Rsa, m: bigint): bigint
-
-    -- signing in RSA is powmodding with the private key:
-    bigint_sign: function(Rsa, m: bigint): bigint
-    bigint_is_signature_valid: function(Rsa, m: bigint, s: bigint): boolean
-
-    bigint_decrypt: function(Rsa, c: bigint): bigint
   end
 
   new: function(cls: Rsa, opts: rsa_options): Rsa
