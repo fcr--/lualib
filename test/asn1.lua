@@ -15,6 +15,8 @@ function Asn1Test:test_encode()
       self:assert_equal(asn1.BigInteger:new{}:encode(bigint.new(num)), encoded)
    end
    self:assert_equal(asn1.Null:new{}:encode(), '\5\0')
+   self:assert_equal(asn1.Oid:new{}:encode '2.100.3', '\6\3\129\52\3')
+   self:assert_equal(asn1.Oid:new{}:encode{1, 2, 840, 113549}, '\6\6\42\134\72\134\247\13')
 end
 
 

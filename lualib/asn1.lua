@@ -185,13 +185,52 @@ function Null:_encode(res, value)
   self:_encode_tlv(res, '')
 end
 
---local schema = asn1.Boolean{}
 
---[[
-local record Asn1
+local Oid = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 6,
+  constructed = false,
+}
 
+function Oid:_encode_identifier(v)
+  local b3, b2, b1, b0
+  assert(math.floor(v) == v and 0 <= v)
+  if v < 128 then return string.char(v) end
+  b0, v = v % 128, math.floor(v / 128)
+  if v < 128 then return string.char(128 + v, b0) end
+  b1, v = v % 128 + 128, math.floor(v / 128)
+  if v < 128 then return string.char(128 + v, b1, b0) end
+  b2, v = v % 128 + 128, math.floor(v / 128)
+  if v < 128 then return string.char(128 + v, b2, b1, b0) end
+  b3, v = v % 128 + 128, math.floor(v / 128)
+  if v < 128 then return string.char(128 + v, b3, b2, b1, b0) end
+  error 'oid identifier too large (>=2**35)'
 end
-]]
+
+function Oid:_encode(res, value)
+  -- we accept oids in a table like { 1, 2, 840, 113549, 1 }, otherwise we convert them from a string
+  local identifiers = value
+  if type(value) == 'string' then
+    identifiers = {}
+    for word in (value .. '.'):gmatch '(.-)%.' do
+      assert(word:find '^%d+$', 'invalid oid string representation')
+      identifiers[#identifiers + 1] = tonumber(word)
+    end
+  end
+  local v1, v2 = identifiers[1], identifiers[2]
+  assert(math.floor(v2) == v2 and v2 >= 0)
+  if v1 == 0 or v1 == 1 then
+    assert(math.floor(v2) == v2 and v2 <= 39, 'invalid oid value[2] for value[1] in (0, 1)')
+  elseif v1 ~= 2 then
+    error 'invalid oid value[1], only (0, 1, 2) allowed'
+  end
+  local encoded_identifiers = {self:_encode_identifier(40 * v1 + v2)}
+  for i = 2, #identifiers - 1 do
+    encoded_identifiers[i] = self:_encode_identifier(identifiers[i+1])
+  end
+  self:_encode_tlv(res, table.concat(encoded_identifiers))
+end
+
 
 return {
   TAG_CLASS = TAG_CLASS,
@@ -200,4 +239,5 @@ return {
   Integer = Integer,
   BigInteger = BigInteger,
   Null = Null,
+  Oid = Oid,
 }
