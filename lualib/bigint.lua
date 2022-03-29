@@ -51,6 +51,7 @@ local function new(n)
          n = -n
          res.sign = -1
       end
+      assert(n ~= math.huge, 'infinite is not supported')
       while n ~= 0 do
          res[#res+1] = n % atombase
          n = math.floor(n / atombase)
