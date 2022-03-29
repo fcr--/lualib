@@ -35,6 +35,21 @@ function OoTest:test_constructor()
 end
 
 
+function OoTest:test_inheritance()
+  local parent = oo.class()
+  function parent:method(x)
+    return x+10
+  end
+  local child = oo.class(parent)
+  self:assert_equal(child:new():method(7), 17)
+
+  function child:method(x)
+    return parent.method(self, x) + 100
+  end
+  self:assert_equal(child:new():method(7), 117)
+end
+
+
 OoTest:run_if_main()
 
 
