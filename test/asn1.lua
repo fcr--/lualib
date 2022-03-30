@@ -18,6 +18,11 @@ function Asn1Test:test_encode()
    self:assert_equal(asn1.Null:new{}:encode(), '\5\0')
    self:assert_equal(asn1.Oid:new{}:encode '2.100.3', '\6\3\129\52\3')
    self:assert_equal(asn1.Oid:new{}:encode{1, 2, 840, 113549}, '\6\6\42\134\72\134\247\13')
+   local schema = asn1.Sequence:new {
+      asn1.IA5String:new {name='name'},
+      asn1.Boolean:new {name='ok'},
+   }
+   self:assert_equal(schema:encode{name='Smith', ok=true}, '\48\10\22\5Smith\1\1\1')
    self:assert_equal(asn1.PrintableString:new{}:encode 'Hello, World1 \'()+,-./:=?', '\19\25Hello, World1 \'()+,-./:=?')
 end
 

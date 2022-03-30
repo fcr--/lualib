@@ -75,6 +75,16 @@ function Node:_init(options)
     self.tag_class = tag_class
   end
 
+  -- optional and default can be used for Sequence:
+  if options.optional ~= nil then
+    assert(type(options.optional) == 'boolean')
+    self.optional = options.optional
+  end
+
+  if options.default ~= nil then
+    self.default = options.default
+  end
+
   self.encoded_tag = encode_tag(self)
 end
 
@@ -202,6 +212,11 @@ local Null = oo.class(Node):_pre_init {
   constructed = false,
 }
 
+function Null:_init(options)
+  self.null = options.null
+  Node._init(self, options)
+end
+
 function Null:_encode(res, value)
   assert(value == self.null)
   self:_encode_tlv(res, '')
@@ -254,6 +269,62 @@ function Oid:_encode(res, value)
 end
 
 
+local Sequence = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 16,
+  constructed = true,
+}
+
+function Sequence:_init(options)
+  assert(options.of == nil or options[1] == nil, 'Sequence cannot be both a record and SEQUENCE OF')
+  self.of = options.of
+  if self.of ~= nil and not oo.isinstance(self.of, Node) then
+    error 'Sequence "of" elements must be Nodes'
+  end
+  for i = 1, #options do
+    self[i] = options[i]
+    assert(oo.isinstance(self[i], Node), 'Sequence children must be Nodes')
+  end
+  Node._init(self, options)
+end
+
+-- cascade(a, b, c, ...) is a «false»-safe replacement for: a or b or c or ...
+local function cascade(...)
+  for i = 1, select('#', ...) do
+    local value = select(i, ...)
+    if value ~= nil then return value end
+  end
+end
+
+function Sequence:_encode(res, value)
+  local res_base = #res
+  assert(type(value) == 'table', 'Sequence values must be tables')
+  res[res_base + 1] = self.encoded_tag
+  res[res_base + 2] = ''  -- this is fixed after all the children are encoded
+  if self.of then
+    -- simplest case, we are just encoding an array of values
+    for _, v in ipairs(value) do
+      self.of:_encode(res, v)
+    end
+  else -- we are dealing with a record sequence, values can be referenced by index or name
+    for i, child in ipairs(self) do
+      local v = cascade(value[i], value[child.name], child.default)
+      if v ~= nil then
+        child:_encode(res, v)
+      elseif not child.optional then
+        error(('missing child %d %s'):format(i, child.name or ''))
+      end
+    end
+  end
+  -- fix encoded length:
+  local content_size = 0
+  for i = res_base + 3, #res do
+    content_size = content_size + #res[i]
+  end
+  res[res_base + 2] = encode_length(content_size)
+end
+
+
 local PrintableString = oo.class(Node):_pre_init {
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 19,
@@ -275,6 +346,28 @@ function PrintableString:_encode(res, value)
 end
 
 
+-- IA5 is basically the same as ASCII, where only the chars U+0000 to U+007F are allowed
+local IA5String = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 22,
+  constructed = false,  -- It's always primitive on DER
+  supports_primitive_and_constructed = true,
+}
+
+function IA5String:_init(options)
+  self.minlen = options.minlen or 0
+  self.maxlen = options.maxlen or math.huge
+  Node._init(self, options)
+end
+
+function IA5String:_encode(res, value)
+  assert(type(value) == 'string', 'IA5String values must be strings')
+  assert(self.minlen <= #value and #value <= self.maxlen, 'invalid IA5String string length')
+  assert(value:find "^[%z\1-\127]*$", 'illegal character')
+  self:_encode_tlv(res, value)
+end
+
+
 return {
   TAG_CLASS = TAG_CLASS,
   Node = Node,
@@ -284,5 +377,7 @@ return {
   OctetString = OctetString,
   Null = Null,
   Oid = Oid,
+  Sequence = Sequence,
   PrintableString = PrintableString,
+  IA5String = IA5String,
 }
