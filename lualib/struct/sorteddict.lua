@@ -9,7 +9,7 @@ where a node can be nil or a table with:
   `kk`: the result of calling dict_instance.key with the k.
   `level`: small integer used to detect unbalanced trees (1+distance to smallest subnode+...(other details))
 
-* More info in [its wikipedia page](https://en.wikipedia.org/wiki/AA_tree.).
+* More info in [its wikipedia page](https://en.wikipedia.org/wiki/AA_tree).
 ]]
 
 local oo = require 'lualib.oo'
