@@ -14,9 +14,11 @@ function Asn1Test:test_encode()
       self:assert_equal(asn1.Integer:new{}:encode(num), encoded)
       self:assert_equal(asn1.BigInteger:new{}:encode(bigint.new(num)), encoded)
    end
+   self:assert_equal(asn1.OctetString:new{}:encode 'Hello, World!', '\4\13Hello, World!')
    self:assert_equal(asn1.Null:new{}:encode(), '\5\0')
    self:assert_equal(asn1.Oid:new{}:encode '2.100.3', '\6\3\129\52\3')
    self:assert_equal(asn1.Oid:new{}:encode{1, 2, 840, 113549}, '\6\6\42\134\72\134\247\13')
+   self:assert_equal(asn1.PrintableString:new{}:encode 'Hello, World1 \'()+,-./:=?', '\19\25Hello, World1 \'()+,-./:=?')
 end
 
 

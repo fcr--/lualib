@@ -81,13 +81,15 @@ end
 function Node:_pre_init(options)
   local tag = options.tag
 
-  assert(type(options.constructed) == 'boolean')
   assert(TAG_CLASS_TO_NAME[options.tag_class])
   assert(type(tag) == 'number' and math.floor(tag) == tag and 0 <= tag)
+  assert(type(options.constructed) == 'boolean')
+  assert(type(options.supports_primitive_and_constructed or false) == 'boolean')
 
   self.tag_class = options.tag_class
   self.tag = tag
   self.constructed = options.constructed
+  self.supports_primitive_and_constructed = options.supports_primitive_and_constructed or false
   -- return self so that our subclasses can pre-init by doing local SubClass = oo.class(Node):_pre_init{...}
   return self
 end
@@ -174,6 +176,26 @@ function BigInteger:_encode(res, value)
 end
 
 
+local OctetString = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 4,
+  constructed = false,  -- It's always primitive on DER
+  supports_primitive_and_constructed = true,
+}
+
+function OctetString:_init(options)
+  self.minlen = options.minlen or 0
+  self.maxlen = options.maxlen or math.huge
+  Node._init(self, options)
+end
+
+function OctetString:_encode(res, value)
+  assert(type(value) == 'string', 'OctetString values must be strings')
+  assert(self.minlen <= #value and #value <= self.maxlen, 'invalid OctetString string length')
+  self:_encode_tlv(res, value)
+end
+
+
 local Null = oo.class(Node):_pre_init {
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 5,
@@ -232,12 +254,35 @@ function Oid:_encode(res, value)
 end
 
 
+local PrintableString = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 19,
+  constructed = false,  -- It's always primitive on DER
+  supports_primitive_and_constructed = true,
+}
+
+function PrintableString:_init(options)
+  self.minlen = options.minlen or 0
+  self.maxlen = options.maxlen or math.huge
+  Node._init(self, options)
+end
+
+function PrintableString:_encode(res, value)
+  assert(type(value) == 'string', 'PrintableString values must be strings')
+  assert(self.minlen <= #value and #value <= self.maxlen, 'invalid PrintableString string length')
+  assert(value:find "^[-%w '()+,./:=?]*$", 'illegal character')
+  self:_encode_tlv(res, value)
+end
+
+
 return {
   TAG_CLASS = TAG_CLASS,
   Node = Node,
   Boolean = Boolean,
   Integer = Integer,
   BigInteger = BigInteger,
+  OctetString = OctetString,
   Null = Null,
   Oid = Oid,
+  PrintableString = PrintableString,
 }
