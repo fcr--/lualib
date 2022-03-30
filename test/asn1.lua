@@ -22,6 +22,7 @@ function Asn1Test:test_encode()
       asn1.IA5String:new {name='name'},
       asn1.Boolean:new {name='ok'},
    }
+   self:assert_equal(asn1.Sequence:new{asn1.Integer:new{name='foo'}}:encode{255}, '\48\4\2\2\0\255')
    self:assert_equal(asn1.Sequence:new{asn1.Integer:new{default=123}}:encode{}, '\48\3\2\1\123')
    self:assert_equal(asn1.Sequence:new{asn1.Integer:new{optional=true}}:encode{}, '\48\0')
    self:assert_equal(asn1.Sequence:new{of=asn1.Integer:new{}}:encode{10, 20, 30}, '\48\9\2\1\10\2\1\20\2\1\30')
