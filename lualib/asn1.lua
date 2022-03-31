@@ -362,13 +362,41 @@ function T61String:_init(options)
 end
 
 -- Conversion tables are not perfect, for example G0 (ISO-2022) is not supported.
+-- https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.61-198811-S!!PDF-E&type=items
 local UTF8_TO_T61 = {['¡']='\161', ['¢']='\162', ['£']='\163', ['$']='\164', ['¥']='\165',
   ['#']='\166', ['§']='\167', ['¤']='\168', ['«']='\171', ['°']='\176', ['±']='\177',
   ['²']='\178', ['³']='\179', ['×']='\180', ['µ']='\181', ['¶']='\182', ['·']='\183',
-  ['÷']='\184', ['»']='\187', ['¼']='\188', ['½']='\189', ['¾']='\190', ['¿']='\191'}
-  -- TODO: complete the rest of the table
+  ['÷']='\184', ['»']='\187', ['¼']='\188', ['½']='\189', ['¾']='\190', ['¿']='\191',
+  ['Ω']='\224', ['Æ']='\225', ['Ð']='\226', ['ª']='\227', ['Ħ']='\228', ['Ĳ']='\230',
+  ['Ŀ']='\231', ['Ł']='\232', ['Ø']='\233', ['Œ']='\234', ['º']='\235', ['Þ']='\236',
+  ['Ŧ']='\237', ['Ŋ']='\238', ['ŉ']='\239', ['ĸ']='\240', ['æ']='\241', ['đ']='\242',
+  ['ð']='\243', ['ħ']='\244', ['ı']='\245', ['ĳ']='\246', ['ŀ']='\247', ['ł']='\248',
+  ['ø']='\249', ['œ']='\250', ['ß']='\251', ['þ']='\252', ['ŧ']='\253', ['ŋ']='\254'}
+for diacritical_char, char_pairs in pairs {
+  ['\193'] = 'àaÀAèeÈEìiÌIòoÒOùuÙU', -- grave
+  ['\194'] = 'áaÁAćcĆCéeÉEǵgíiÍIĺlĹLńnŃNóoÓOŕrŔRśsŚSúuÚUýyÝYźzŹZ', -- acute
+  ['\195'] = 'âaÂAĉcĈCêeÊEĝgĜGĥhĤHîiÎIĵjĴJôoÔOŝsŜSûuÛUŵwŴWŷyŶY', -- circumflex
+  ['\196'] = 'ãaÃAẽeẼEĩiĨIñnÑNõoÕOũuŨU', -- tilde
+  ['\197'] = 'āaĀAēeĒEīiĪIōoŌOūuŪU', -- macron
+  ['\198'] = 'ăaĂAğgĞGŭuŬU', -- breve
+  ['\199'] = 'ċcĊCėeĖEġgĠGıiżzŻZ', -- dot above
+  ['\200'] = 'äaÄAëeËEïiÏIöoÖOüuÜUÿyŸY', -- diaeresis (\201 = umlaut is discouraged)
+  ['\202'] = 'åaÅAůuŮU', -- ring
+  ['\203'] = 'çcÇCĢGķkĶKļlĻLņnŅNŗrŖRşsŞSţtŢT', -- cedilla
+  -- \204 = underscore is not supported here
+  ['\205'] = 'őoŐOűuŰU', -- double accute accent
+  ['\206'] = 'ąaĄAęeĘEįiĮIųuŲU', -- ogonek
+  ['\207'] = 'čcČCďdĎDěeĚEľlĽLňnŇNřrŘRšsŠsťtŤTžzŽZ' -- caron
+} do
+  assert('' == char_pairs:gsub('([%z\1-\128\194-\244][\128-\191]*)(%a)',
+    function(utf8_char, alpha_char)
+      UTF8_TO_T61[utf8_char] = diacritical_char .. alpha_char
+      return ''
+    end))
+end
+-- TODO: complete the rest of the table
 local T61_TO_UTF8 = {}
-for c in (' !"%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'.. 
+for c in ('\t\n\f\r !"%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'.. 
   '[]_abcdefghijklmnopqrstuvwxyz|'):gmatch '.' do UTF8_TO_T61[c] = c end
 for utf8_char, t61_char in pairs(UTF8_TO_T61) do T61_TO_UTF8[t61_char] = utf8_char end
 T61_TO_UTF8['#'] = '#'
@@ -421,5 +449,6 @@ return {
   Oid = Oid,
   Sequence = Sequence,
   PrintableString = PrintableString,
+  T61String = T61String,
   IA5String = IA5String,
 }
