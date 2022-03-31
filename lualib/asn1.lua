@@ -389,12 +389,11 @@ for diacritical_char, char_pairs in pairs {
   ['\207'] = 'čcČCďdĎDěeĚEľlĽLňnŇNřrŘRšsŠsťtŤTžzŽZ' -- caron
 } do
   assert('' == char_pairs:gsub('([%z\1-\128\194-\244][\128-\191]*)(%a)',
-    function(utf8_char, alpha_char)
+    function (utf8_char, alpha_char)
       UTF8_TO_T61[utf8_char] = diacritical_char .. alpha_char
       return ''
     end))
 end
--- TODO: complete the rest of the table
 local T61_TO_UTF8 = {}
 for c in ('\t\n\f\r !"%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'.. 
   '[]_abcdefghijklmnopqrstuvwxyz|'):gmatch '.' do UTF8_TO_T61[c] = c end
@@ -406,8 +405,12 @@ function T61String:_encode(res, value)
   assert(type(value) == 'string', 'T61String values must be strings')
   if not self.raw then
     local codes = {}
-    for char in value:gmatch '[%z\1-\128\194-\244][\128-\191]*' do
+    local invalid_utf8 = value:gsub('[%z\1-\128\194-\244][\128-\191]*', function (char)
       codes[#codes + 1] = assert(UTF8_TO_T61[char], 'character not supported in T.61')
+      return ''
+    end)
+    if invalid_utf8 ~= '' then
+      error(('invalid utf-8 bytes given to T61String: %q'):format(invalid_utf8))
     end
     value = table.concat(codes)
   end
