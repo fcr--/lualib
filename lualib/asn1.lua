@@ -346,6 +346,48 @@ function PrintableString:_encode(res, value)
 end
 
 
+local T61String = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 20,
+  constructed = false,  -- It's always primitive on DER
+  supports_primitive_and_constructed = true,
+}
+
+function T61String:_init(options)
+  -- length is measured in T.61 bytes after conversion
+  self.minlen = options.minlen or 0
+  self.maxlen = options.maxlen or math.huge
+  self.raw = false  -- set it to true if you want to avoid utf-8 to T.61 conversion
+  Node._init(self, options)
+end
+
+-- Conversion tables are not perfect, for example G0 (ISO-2022) is not supported.
+local UTF8_TO_T61 = {['¡']='\161', ['¢']='\162', ['£']='\163', ['$']='\164', ['¥']='\165',
+  ['#']='\166', ['§']='\167', ['¤']='\168', ['«']='\171', ['°']='\176', ['±']='\177',
+  ['²']='\178', ['³']='\179', ['×']='\180', ['µ']='\181', ['¶']='\182', ['·']='\183',
+  ['÷']='\184', ['»']='\187', ['¼']='\188', ['½']='\189', ['¾']='\190', ['¿']='\191'}
+  -- TODO: complete the rest of the table
+local T61_TO_UTF8 = {}
+for c in (' !"%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'.. 
+  '[]_abcdefghijklmnopqrstuvwxyz|'):gmatch '.' do UTF8_TO_T61[c] = c end
+for utf8_char, t61_char in pairs(UTF8_TO_T61) do T61_TO_UTF8[t61_char] = utf8_char end
+T61_TO_UTF8['#'] = '#'
+T61_TO_UTF8['$'] = '¤'
+
+function T61String:_encode(res, value)
+  assert(type(value) == 'string', 'T61String values must be strings')
+  if not self.raw then
+    local codes = {}
+    for char in value:gmatch '[%z\1-\128\194-\244][\128-\191]*' do
+      codes[#codes + 1] = assert(UTF8_TO_T61[char], 'character not supported in T.61')
+    end
+    value = table.concat(codes)
+  end
+  assert(self.minlen <= #value and #value <= self.maxlen, 'invalid T61String string length')
+  self:_encode_tlv(res, value)
+end
+
+
 -- IA5 is basically the same as ASCII, where only the chars U+0000 to U+007F are allowed
 local IA5String = oo.class(Node):_pre_init {
   tag_class = TAG_CLASS.UNIVERSAL,
