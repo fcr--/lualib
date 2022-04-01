@@ -45,6 +45,7 @@ end
 
 
 function JsonTest:test_array()
+  self:assert_equal('[]', json.encode{})
   self:assert_equal('[42,"e"]', json.encode{42, 'e'})
   local function a(t) return setmetatable(t, json.Array) end
   self:assert_equal('[]', json.encode(a{}))
@@ -59,9 +60,9 @@ end
 
 
 function JsonTest:test_object()
-  self:assert_equal('{}', json.encode{})
+  self:assert_equal('{}', json.encode(setmetatable({}, json.Object)))
   self:assert_equal('{"a":"b","c":42}', json.encode{a='b', c=42})
-  self:assert_equal('{"a":[2,"b",{"c":3}],"d":{"e":{}}}', json.encode{a={2,'b',{c=3}}, d={e={}}})
+  self:assert_equal('{"a":[2,"b",{"c":3}],"d":{"e":[]}}', json.encode{a={2,'b',{c=3}}, d={e={}}})
 
   local t = {infinite={}}
   t.infinite.loop = t
