@@ -457,8 +457,8 @@ end
 
 function UTCTime:_encode(res, value)
   if type(value) == 'table' then
-    --[[ if you pass a table it will be considered as local time, if you need to convert from a utc table, use this,
-         which as far as I know, should work:
+    --[[ if you pass a table it will be considered as local time, if you need to convert from a utc
+         table use this, which as far as I know, should work:
     function utc_table_to_unix_time(value)
       local value_unix_time = os.time(value)
       local d1 = os.date('*t',  value_unix_time)
@@ -491,7 +491,7 @@ return {
   OctetString = OctetString,
   Null = Null,
   Oid = Oid,
-  Sequence = Sequence,
+  equence = Sequence,
   PrintableString = PrintableString,
   T61String = T61String,
   IA5String = IA5String,
