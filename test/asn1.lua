@@ -29,6 +29,7 @@ function Asn1Test:test_encode()
    self:assert_equal(schema:encode{name='Smith', ok=true}, '\48\10\22\5Smith\1\1\1')
    self:assert_equal(asn1.PrintableString:new{}:encode 'Hello, World1 \'()+,-./:=?', '\19\25Hello, World1 \'()+,-./:=?')
    self:assert_equal(asn1.UTCTime:new{}:encode(1649135335), '\23\013220405050855Z')
+   self:assert_equal(asn1.UTCTime:new{}:encode(1649135340), '\23\013220405050900Z')
 end
 
 

@@ -477,7 +477,7 @@ function UTCTime:_encode(res, value)
   -- So instead we convert it to second "59" which is better than breaking them.
   --   It's incredible the ITU folks decided to use this mess of encoding instead of the simple UNIX
   -- time inside an Integer.  Which btw reintroduces the Y2K problem by discarding the century. 🤦
-  value = os.date('!%y%m%d%H%M%SZ', value):gsub('[06]0Z', {['00Z']='Z', ['60Z']='59Z'})
+  value = os.date('!%y%m%d%H%M%SZ', value):gsub('60Z', '59Z')
   self:_encode_tlv(res, value)
 end
 
@@ -491,7 +491,7 @@ return {
   OctetString = OctetString,
   Null = Null,
   Oid = Oid,
-  equence = Sequence,
+  Sequence = Sequence,
   PrintableString = PrintableString,
   T61String = T61String,
   IA5String = IA5String,
