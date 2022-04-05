@@ -476,7 +476,7 @@ function UTCTime:_encode(res, value)
   -- We might be generating second number "60" on leap seconds, and that might break some implementations.
   -- So instead we convert it to second "59" which is better than breaking them.
   --   It's incredible the ITU folks decided to use this mess of encoding instead of the simple UNIX
-  -- time inside an Integer.  Which btw reintroduces the Y2K problem. 🤦
+  -- time inside an Integer.  Which btw reintroduces the Y2K problem by discarding the century. 🤦
   value = os.date('!%y%m%d%H%M%SZ', value):gsub('[06]0Z', {['00Z']='Z', ['60Z']='59Z'})
   self:_encode_tlv(res, value)
 end
