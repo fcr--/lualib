@@ -1,6 +1,7 @@
 local json = {}
 
--- Used as metatables to help identify empty cases:
+-- Used as metatables to help identify empty cases, they have the __jsontype set to 'array'
+-- or 'object' to maintain compatibility with dkjson users:
 json.Array = {__jsontype='array'}
 json.Object = {__jsontype='object'}
 
@@ -27,7 +28,8 @@ function json.is_array(value)
   local mt = getmetatable(value)
   if type(mt) == 'table' and mt.__jsontype ~= nil then
     return mt.__jsontype == 'array'
-  elseif value[1] then
+  elseif value[1] or next(value) == nil then
+    -- empty tables are considered arrays!
     return true
   else
     return false
