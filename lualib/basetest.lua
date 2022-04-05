@@ -92,6 +92,14 @@ function BaseTest:run_all_tests(opts)
 end
 
 
+local function quote(value)
+  if type(value) == 'string' then
+    return ('%q'):format(value)
+  end
+  return tostring(value)
+end
+
+
 -- class method:
 function BaseTest:run_tests_named(opts, ...)
   local results = {} -- list of errors
@@ -192,21 +200,21 @@ end
 
 function BaseTest:assert_greater(x, y)
   if x <= y then
-    error(('expected %s > %s'):format(x, y))
+    error(('expected %s > %s'):format(quote(x), quote(y)))
   end
 end
 
 
 function BaseTest:assert_greater_or_equal(x, y)
   if x < y then
-    error(('expected %s >= %s'):format(x, y))
+    error(('expected %s >= %s'):format(quote(x), quote(y)))
   end
 end
 
 
 function BaseTest:assert_equal(x, y)
   if x ~= y then
-    error(('expected %s == %s'):format(x, y))
+    error(('expected %s == %s'):format(quote(x), quote(y)))
   end
 end
 
@@ -229,21 +237,21 @@ end
 
 function BaseTest:assert_less(x, y)
   if x >= y then
-    error(('expected %s < %s'):format(x, y))
+    error(('expected %s < %s'):format(quote(x), quote(y)))
   end
 end
 
 
 function BaseTest:assert_less_or_equal(x, y)
   if x > y then
-    error(('expected %s <= %s'):format(x, y))
+    error(('expected %s <= %s'):format(quote(x), quote(y)))
   end
 end
 
 
 function BaseTest:assert_nil(x)
   if x ~= nil then
-    error(('expected not nil but received %s: %q'):format(type(x), x))
+    error(('expected not nil but received %s: %s'):format(type(x), quote(x)))
   end
 end
 
@@ -257,7 +265,7 @@ end
 
 function BaseTest:assert_not_nil(x)
   if x == nil then
-    error(('expected not nil but received %s: %q'):format(type(x), x))
+    error(('expected not nil but received %s: %s'):format(type(x), quote(x)))
   end
 end
 
@@ -265,7 +273,7 @@ end
 function BaseTest:assert_pattern(text, pattern)
   text = tostring(text)
   if not text:find(pattern) then
-    error(('expected pattern %q to be found in: %q'):format(pattern, text))
+    error(('expected pattern %q to be found in: %s'):format(pattern, quote(text)))
   end
 end
 
@@ -273,7 +281,7 @@ end
 function BaseTest:assert_type(x, typ)
   assert(({['nil']=1, number=1, string=1, boolean=1, table=1, ['function']=1, thread=1, userdata=1})[typ])
   if type(x) ~= typ then
-    error(('expected %s but received %s: %q'):format(typ, type(x), x))
+    error(('expected %s but received %s: %s'):format(typ, type(x), quote(x)))
   end
 end
 
@@ -309,7 +317,7 @@ function BaseTest:assert_deep_equal(x, y, path, inspected, diffs)
   if getmetatable(y) == SetMark then x,y=y,x end
   if getmetatable(x) == SetMark then
     if not x.matches(y) then
-      add_diff('expecting %s, found %s: %s', x.name, type(y), y)
+      add_diff('expecting %s, found %s: %s', x.name, type(y), quote(y))
     end
   elseif type(x) ~= type(y) then
     add_diff('different types: %s %s', type(x), type(y))
@@ -338,7 +346,7 @@ function BaseTest:assert_deep_equal(x, y, path, inspected, diffs)
       inspected[y] = nil
     end
   elseif x ~= y then
-    add_diff('different %s: %s ~= %s', type(x), x, y)
+    add_diff('different %s: %s ~= %s', type(x), quote(x), y)
   end
   if #path == 0 and #diffs > 0 then
     error(('%d difference%s found:\n'):format(#diffs, #diffs>1 and 's' or '') .. table.concat(diffs, '\n'))

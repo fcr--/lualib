@@ -441,6 +441,47 @@ function IA5String:_encode(res, value)
 end
 
 
+-- UTCTime, a string with format: "YYMMDDhhmm(ss)?(Z|[+-]hhmm)"
+local UTCTime = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 23,
+  constructed = false,  -- It's always primitive on DER
+  supports_primitive_and_constructed = true,
+}
+
+function UTCTime:_init(options)
+  self.minlen = options.minlen or 0
+  self.maxlen = options.maxlen or math.huge
+  Node._init(self, options)
+end
+
+function UTCTime:_encode(res, value)
+  if type(value) == 'table' then
+    --[[ if you pass a table it will be considered as local time, if you need to convert it, use this,
+         which as far as I know, should work:
+    function utc_table_to_unix_time(value)
+      local value_unix_time = os.time(value)
+      local d1 = os.date('*t',  value_unix_time)
+      local d2 = os.date('!*t', value_unix_time)
+      d1.isdst = false
+      local zone_diff = os.difftime(os.time(d1), os.time(d2))
+
+      return os.time(setmetatable({sec=value.sec + zone_diff}, {__index=value}))
+    end
+    ]]
+    value = os.time(value)
+  end
+  assert(type(value) == 'number', 'UTCTime values should be int seconds from epoch or "!*t" date table')
+
+  -- We might be generating second number "60" on leap seconds, and that might break some implementations.
+  -- So instead we convert it to second "59" which is better than breaking them.
+  --   It's incredible the ITU folks decided to use this mess of encoding instead of the simple UNIX
+  -- time inside an Integer.  Which btw reintroduces the Y2K problem. 🤦‍♂
+  value = os.date('!%y%m%d%H%M%SZ', value):gsub('[06]0Z', {['00Z']='Z', ['60Z']='59Z'})
+  self:_encode_tlv(res, value)
+end
+
+
 return {
   TAG_CLASS = TAG_CLASS,
   Node = Node,
@@ -454,4 +495,5 @@ return {
   PrintableString = PrintableString,
   T61String = T61String,
   IA5String = IA5String,
+  UTCTime = UTCTime,
 }
