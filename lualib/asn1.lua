@@ -186,6 +186,48 @@ function BigInteger:_encode(res, value)
 end
 
 
+local BitString = oo.class(Node):_pre_init {
+  tag_class = TAG_CLASS.UNIVERSAL,
+  tag = 3,
+  constructed = false,
+  supports_primitive_and_constructed = true,
+}
+
+function BitString:_init(options)
+  self.format = options.format or 'bytes'
+  -- valid formats:
+  --   bytes: values are strings, input bitstrings must have 0 unused bits
+  --   bits: values are strings with format '^[01]*$', no restrictions on input bitstrings
+  assert(({bytes=1, bits=1})[self.format], 'invalid BitString format')
+  Node._init(self, options)
+end
+
+function BitString:_encode(res, value)
+  if self.format == 'bytes' then
+    self:_encode_tlv(res, '\0'..value)
+  else
+    assert(value:find '^[01]*$', 'invalid bit value on BitString:new{format="bits"}')
+    local bytes = {string.char((-#value)%8)}
+    local byte = 0
+
+    for i = 1, #value do
+      local bit = value:byte(i) - 48  -- 48 == ('0'):byte()
+      if bit > 0 then
+        byte = byte + 2^(7 - (i-1)%8)
+      end
+      if i%8 == 0 then
+        bytes[#bytes+1] = string.char(byte)
+        byte = 0
+      end
+    end
+    -- insert last byte with padding:
+    if #value % 8 ~= 0 then
+      bytes[#bytes+1] = string.char(byte)
+    end
+    self:_encode_tlv(res, table.concat(bytes))
+  end
+end
+
 local OctetString = oo.class(Node):_pre_init {
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 4,
@@ -488,6 +530,7 @@ return {
   Boolean = Boolean,
   Integer = Integer,
   BigInteger = BigInteger,
+  BitString = BitString,
   OctetString = OctetString,
   Null = Null,
   Oid = Oid,

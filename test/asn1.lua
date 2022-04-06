@@ -14,6 +14,8 @@ function Asn1Test:test_encode()
       self:assert_equal(asn1.Integer:new{}:encode(num), encoded)
       self:assert_equal(asn1.BigInteger:new{}:encode(bigint.new(num)), encoded)
    end
+   self:assert_equal(asn1.BitString:new{}:encode'Hello', '\3\6\0Hello')
+   self:assert_equal(asn1.BitString:new{format='bits'}:encode'011011100101110111', '\3\4\6\110\93\192')
    self:assert_equal(asn1.OctetString:new{}:encode 'Hello, World!', '\4\13Hello, World!')
    self:assert_equal(asn1.Null:new{}:encode(), '\5\0')
    self:assert_equal(asn1.Oid:new{}:encode '2.100.3', '\6\3\129\52\3')
