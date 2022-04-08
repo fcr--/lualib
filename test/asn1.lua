@@ -20,7 +20,17 @@ function Asn1Test:test_encode()
    self:assert_equal(asn1.Null:new{}:encode(), '\5\0')
    self:assert_equal(asn1.Oid:new{}:encode '2.100.3', '\6\3\129\52\3')
    self:assert_equal(asn1.Oid:new{}:encode{1, 2, 840, 113549}, '\6\6\42\134\72\134\247\13')
-   local schema = asn1.Sequence:new {
+   local schema = asn1.Choice:new {
+      asn1.Integer:new {name='num'},
+      asn1.OctetString:new {name='str'},
+      asn1.Null:new {name='null', null=asn1.Null},
+   }
+   self:assert_equal(schema:encode{num=4}, '\2\1\4')
+   self:assert_equal(schema:encode{str='fran'}, '\4\4fran')
+   self:assert_equal(schema:encode{null=asn1.Null}, '\5\0')
+   self:assert_error(schema.encode, schema, {})
+   self:assert_error(schema.encode, schema, {num=4, str='e'})
+   schema = asn1.Sequence:new {
       asn1.IA5String:new {name='name'},
       asn1.Boolean:new {name='ok'},
    }

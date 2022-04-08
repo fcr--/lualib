@@ -260,7 +260,7 @@ function Null:_init(options)
 end
 
 function Null:_encode(res, value)
-  assert(value == self.null)
+  assert(value == self.null, 'Expected null value to encode, use null parameter to the constructor')
   self:_encode_tlv(res, '')
 end
 
@@ -311,6 +311,47 @@ function Oid:_encode(res, value)
 end
 
 
+local Choice = oo.class()
+
+function Choice:_init(options)
+  self.name = options.name
+  self.default = options.default
+  self.optional = options.optional
+  self.choices = {}  -- keys are strings like 'UNIVERSAL-5', values are Node instances
+  self.choices_by_name = {}
+  local function addchoice(key, node)
+    if self.choices[key] then
+      error('duplicated choice ' .. key)
+    end
+    if self.choices_by_name[node.name] then
+      error('choice child with duplicated name ' .. node.name)
+    end
+    assert(node.name, 'Choice children must be named, in this library it is mandatory')
+    self.choices[key] = node
+    self.choices_by_name[node.name] = node
+  end
+
+  for i, child in ipairs(options) do
+    if child.choices then -- we are adding a subchoice, weird but ok...
+      for key, subchild in pairs(child.choices) do addchoice(key, subchild) end
+    else
+      addchoice(TAG_CLASS_TO_NAME[child.tag_class] .. '-' .. child.tag, child)
+    end
+  end
+end
+
+Choice.encode = Node.encode
+
+function Choice:_encode(res, value)
+  assert(type(value) == 'table')
+  local name, subvalue = next(value)
+  local node = self.choices_by_name[name]
+  assert(node, 'choice not found')
+  assert(next(value, name) == nil, 'only one value must be provided')
+  node:_encode(res, subvalue)
+end
+
+
 local Sequence = oo.class(Node):_pre_init {
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 16,
@@ -320,12 +361,12 @@ local Sequence = oo.class(Node):_pre_init {
 function Sequence:_init(options)
   assert(options.of == nil or options[1] == nil, 'Sequence cannot be both a record and SEQUENCE OF')
   self.of = options.of
-  if self.of ~= nil and not oo.isinstance(self.of, Node) then
-    error 'Sequence "of" elements must be Nodes'
+  if self.of ~= nil and not oo.isinstance(self.of, Node) and not oo.isinstance(self.of, Choice) then
+    error 'Sequence "of" elements must be Nodes or Choice'
   end
-  for i = 1, #options do
-    self[i] = options[i]
-    assert(oo.isinstance(self[i], Node), 'Sequence children must be Nodes')
+  for i, child in ipairs(options) do
+    self[i] = child
+    assert(oo.isinstance(child, Node) or oo.isinstance(child, Choice), 'Sequence children must be Nodes or Choice')
   end
   Node._init(self, options)
 end
@@ -534,6 +575,7 @@ return {
   OctetString = OctetString,
   Null = Null,
   Oid = Oid,
+  Choice = Choice,
   Sequence = Sequence,
   PrintableString = PrintableString,
   T61String = T61String,
