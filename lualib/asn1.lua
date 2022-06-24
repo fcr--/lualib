@@ -21,7 +21,7 @@ local TAG_CLASS = {
   CONTEXT = 192,
 }
 
-TAG_CLASS_TO_NAME = {}
+local TAG_CLASS_TO_NAME = {}
 for name, tag_class in pairs(TAG_CLASS) do TAG_CLASS_TO_NAME[tag_class] = name end
 
 local Node = oo.class()
@@ -44,6 +44,33 @@ local function encode_tag(node)
   return ('%c%s'):format(common_header + 31, table.concat(tagbytes):reverse())
 end
 
+local function decode_tag(str, offset)
+  -- returns: tag_class: TAG_CLASS, constructed: boolean, tag: int, next_offset: int
+  -- |<bb:class><b:constructed><b_bbbb:tag>
+  local byte = str:byte(offset)
+  local tag_class = math.floor(byte / 64) * 64
+  byte = byte - tag_class
+
+  local constructed, tag = false, byte
+  if byte > 32 then
+    constructed = true
+    tag = byte - 32
+  end
+
+  if tag == 31 then
+    -- * If tag is 31, it is followed by 0 or more bytes with the highest bit set to 1,
+    --   followed by a final byte with the highest bit set to 0.
+    -- * The lowest 7 bits encode the tag data in big-endian order.
+    tag = 0
+    repeat
+      offset = offset + 1
+      byte = str:byte(offset)
+      tag = tag * 128 + byte % 128
+    until byte < 128
+  end
+  return tag_class, constructed, tag, offset + 1
+end
+
 local function encode_length(valuelen)
   -- encoding the length:
   if valuelen < 128 then
@@ -57,6 +84,26 @@ local function encode_length(valuelen)
   until valuelen == 0
   lenbytes[#lenbytes+1] = string.char(128 + #lenbytes)
   return table.concat(valuelen):reverse()
+end
+
+local function decode_length(str, offset)
+  -- returns length: int, new_offset: int
+
+  -- short format: just the length as a single byte in the 0..127 range
+  local byte = str:byte(offset)
+  if byte < 128 then
+    return byte, offset + 1
+  end
+
+  -- long format:
+  --   * (128+length_length): byte from 129..255
+  --   * (length bytes in BE): byte[length_length]
+  local length = 0
+  local length_length = byte - 128
+  for i = offset, offset + length_length - 1 do
+    length = length * 256 + str:byte(i)
+  end
+  return length, offset + length_length + 1
 end
 
 function Node:_init(options)
@@ -91,6 +138,7 @@ end
 function Node:_pre_init(options)
   local tag = options.tag
 
+  assert(type(options.type_name) == 'string')
   assert(TAG_CLASS_TO_NAME[options.tag_class])
   assert(type(tag) == 'number' and math.floor(tag) == tag and 0 <= tag)
   assert(type(options.constructed) == 'boolean')
@@ -118,8 +166,48 @@ function Node:encode(value)
   return table.concat(res)
 end
 
+function Node:_decode(str, offset)
+  -- you can use this implementation if it's enough for you
+  local tag_class, constructed, tag, length_offset = decode_tag(str, offset)
+  local length, data_offset = decode_length(str, length_offset)
+
+  if tag_class ~= self.tag_class then
+    error(('invalid tag_class %d (expected %d) at offset %d'):format(
+      tag_class, self.tag_class, offset))
+  end
+  if not self.supports_primitive_and_constructed and constructed ~= self.constructed then
+    error(('constructed=%s (expected %s) at offset %d'):format(
+      constructed, self.constructed, offset))
+  end
+  if tag ~= self.tag then
+    error(('invalid tag %d (expected %d) at offset %d'):format(tag, self.tag, offset))
+  end
+
+  local val = self:_decode_data(str, data_offset, length)
+  return val, data_offset + length
+end
+
+function Node:_decode_data(str, data_offset, length)
+  error(('%s fields do not support decoding (at data_offset %d)'):format(self.type_name, data_offset))
+end
+
+function Node:decode(str, offset, length)
+  offset = offset or 1
+  length = length or #str - offset + 1
+
+  local val, new_offset = self:_decode(str, offset)
+
+  -- the only length validation is done at this point:
+  if new_offset - offset > length then
+    error(('asn over-read (%d..%d)=%d > %d'):format(
+      offset, new_offset, new_offset - offset, length))
+  end
+  return val
+end
+
 
 local Boolean = oo.class(Node):_pre_init {
+  type_name = 'Boolean',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 1,
   constructed = false,
@@ -130,8 +218,16 @@ function Boolean:_encode(res, value)
   self:_encode_tlv(res, value and '\1' or '\0')
 end
 
+function Boolean:_decode_data(str, data_offset, length)
+  if length ~= 1 then
+    error(('Boolean value with length=%d (expected 1) at offset %d'):format(length, data_offset))
+  end
+  return str:byte(data_offset) ~= 0
+end
+
 
 local Integer = oo.class(Node):_pre_init {
+  type_name = 'Integer',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 2,
   constructed = false,
@@ -173,8 +269,29 @@ end
   self:_encode_tlv(res, raw)
 end
 
+function Integer:_decode_data(str, data_offset, length)
+  if length == 0 then
+    error(('empty data for Integer at offset %d'):format(data_offset))
+  end
+  local byte0 = str:byte(data_offset)
+  local n
+  if byte0 < 128 then
+    n = byte0
+  else
+    -- Negative numbers are a tricky beast to handle without bitwise functions:
+    -- for any byte b, 255-b is equivalent to bit.bnot(b).  Then by multiplying
+    -- by 256 we are doing bit.lshift(n, 8) which maintains the sign bit.
+    n = -256 + byte0  -- same as -1 - (255-byte0)
+  end
+  for i = data_offset+1, data_offset+length-1 do
+    n = n * 256 + str:byte(i)
+  end
+return n
+end
+
 
 local BigInteger = oo.class(Node):_pre_init {
+  type_name = 'BigInteger',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 2,
   constructed = false,
@@ -187,6 +304,7 @@ end
 
 
 local BitString = oo.class(Node):_pre_init {
+  type_name = 'BitString',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 3,
   constructed = false,
@@ -229,6 +347,7 @@ function BitString:_encode(res, value)
 end
 
 local OctetString = oo.class(Node):_pre_init {
+  type_name = 'OctetString',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 4,
   constructed = false,  -- It's always primitive on DER
@@ -249,6 +368,7 @@ end
 
 
 local Null = oo.class(Node):_pre_init {
+  type_name = 'Null',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 5,
   constructed = false,
@@ -266,6 +386,7 @@ end
 
 
 local Oid = oo.class(Node):_pre_init {
+  type_name = 'Oid',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 6,
   constructed = false,
@@ -312,6 +433,7 @@ end
 
 
 local Choice = oo.class()
+Choice.type_name = 'Choice'
 
 function Choice:_init(options)
   self.name = options.name
@@ -353,6 +475,7 @@ end
 
 
 local Sequence = oo.class(Node):_pre_init {
+  type_name = 'Sequence',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 16,
   constructed = true,
@@ -409,6 +532,7 @@ end
 
 
 local PrintableString = oo.class(Node):_pre_init {
+  type_name = 'PrintableString',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 19,
   constructed = false,  -- It's always primitive on DER
@@ -430,6 +554,7 @@ end
 
 
 local T61String = oo.class(Node):_pre_init {
+  type_name = 'T61String',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 20,
   constructed = false,  -- It's always primitive on DER
@@ -504,6 +629,7 @@ end
 
 -- IA5 is basically the same as ASCII, where only the chars U+0000 to U+007F are allowed
 local IA5String = oo.class(Node):_pre_init {
+  type_name = 'IA5String',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 22,
   constructed = false,  -- It's always primitive on DER
@@ -526,6 +652,7 @@ end
 
 -- UTCTime, a string with format: "YYMMDDhhmm(ss)?(Z|[+-]hhmm)"
 local UTCTime = oo.class(Node):_pre_init {
+  type_name = 'UTCTime',
   tag_class = TAG_CLASS.UNIVERSAL,
   tag = 23,
   constructed = false,  -- It's always primitive on DER
