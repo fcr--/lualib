@@ -7,13 +7,6 @@ local Asn1Test = oo.class(BaseTest)
 
 
 function Asn1Test:test_encode()
-   self:assert_equal(asn1.Boolean:new{}:encode(false), '\1\1\0')
-   self:assert_equal(asn1.Boolean:new{}:encode(true), '\1\1\1')
-   for num, encoded in pairs {[0]='\2\1\0', [127]='\2\1\127', [128]='\2\2\0\128', [256]='\2\2\1\0',
-         [-128]='\2\1\128', [-129]='\2\2\255\127'} do
-      self:assert_equal(asn1.Integer:new{}:encode(num), encoded)
-      self:assert_equal(asn1.BigInteger:new{}:encode(bigint.new(num)), encoded)
-   end
    self:assert_equal(asn1.BitString:new{}:encode'Hello', '\3\6\0Hello')
    self:assert_equal(asn1.BitString:new{format='bits'}:encode'011011100101110111', '\3\4\6\110\93\192')
    self:assert_equal(asn1.OctetString:new{}:encode 'Hello, World!', '\4\13Hello, World!')
@@ -42,6 +35,40 @@ function Asn1Test:test_encode()
    self:assert_equal(asn1.PrintableString:new{}:encode 'Hello, World1 \'()+,-./:=?', '\19\25Hello, World1 \'()+,-./:=?')
    self:assert_equal(asn1.UTCTime:new{}:encode(1649135335), '\23\013220405050855Z')
    self:assert_equal(asn1.UTCTime:new{}:encode(1649135340), '\23\013220405050900Z')
+end
+
+
+function Asn1Test:test_boolean()
+   local b = asn1.Boolean:new{}
+   self:assert_equal(b:encode(false), '\1\1\0')
+   self:assert_equal(b:encode(true), '\1\1\1')
+   self:assert_equal(b:decode '\1\1\0', false)
+   self:assert_equal(b:decode '\1\1\1', true)
+   self:assert_equal(b:decode '\1\1\42', true)
+   self:assert_error(b.decode, b, '\1\0')
+   self:assert_error(b.decode, b, '\1\2\0\0')
+end
+
+
+function Asn1Test:test_integer()
+   local i = asn1.Integer:new{}
+   self:assert_equal(i:encode(0), '\2\1\0')
+   self:assert_equal(i:encode(1), '\2\1\1')
+   self:assert_equal(i:encode(-1), '\2\1\255')
+   for num, encoded in pairs {[0]='\2\1\0', [127]='\2\1\127', [128]='\2\2\0\128', [256]='\2\2\1\0',
+         [-128]='\2\1\128', [-129]='\2\2\255\127', [-1009184543]='\2\4\195\217\16\225'} do
+      self:assert_equal(i:encode(num), encoded)
+      self:assert_equal(i:decode(encoded), num)
+   end
+end
+
+
+function Asn1Test:test_big_integer()
+   local b = asn1.BigInteger:new{}
+   for num, encoded in pairs {[0]='\2\1\0', [127]='\2\1\127', [128]='\2\2\0\128', [256]='\2\2\1\0',
+         [-128]='\2\1\128', [-129]='\2\2\255\127', [-1009184543]='\2\4\195\217\16\225'} do
+      self:assert_equal(b:encode(bigint.new(num)), encoded)
+   end
 end
 
 
