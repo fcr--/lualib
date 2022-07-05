@@ -568,17 +568,17 @@ end
 return {
   TAG_CLASS = TAG_CLASS,
   Node = Node,
-  Boolean = Boolean,
-  Integer = Integer,
-  BigInteger = BigInteger,
-  BitString = BitString,
-  OctetString = OctetString,
-  Null = Null,
-  Oid = Oid,
+  Boolean = Boolean,  -- [1]
+  Integer = Integer,  -- [2]
+  BigInteger = BigInteger,  -- [2]
+  BitString = BitString,    -- [3]
+  OctetString = OctetString,  -- [4]
+  Null = Null,  -- [5]
+  Oid = Oid,    -- [6]
   Choice = Choice,
-  Sequence = Sequence,
-  PrintableString = PrintableString,
-  T61String = T61String,
-  IA5String = IA5String,
-  UTCTime = UTCTime,
+  Sequence = Sequence,  -- [16]
+  PrintableString = PrintableString,  -- [19]
+  T61String = T61String,  -- [20]
+  IA5String = IA5String,  -- [22]
+  UTCTime = UTCTime,  -- [23]
 }
