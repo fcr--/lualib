@@ -279,7 +279,7 @@ end
 
 
 -- power must be an integer number
-function mt:__pow(power)
+function mt:__pow(_power)  -- luacheck: ignore self
    error 'TODO: implement'
 end
 
