@@ -220,7 +220,6 @@ end
 
 
 function BaseTest:assert_error(fn, ...)
-  local res
   return (function(ok, ...)
     if ok then
       local texts = {}
@@ -320,13 +319,13 @@ function BaseTest:assert_deep_equal(x, y, path, inspected, diffs)
       add_diff('expecting %s, found %s: %s', x.name, type(y), quote(y))
     end
   elseif type(x) ~= type(y) then
-    add_diff('different types: %s %s', type(x), type(y))
+    add_diff('different types: %s, %s', type(x), type(y))
   elseif type(x) == 'table' then
     if not inspected[x] or not inspected[y] then
       inspected[x] = true
       inspected[y] = true
       if getmetatable(x) ~= getmetatable(y) then
-        add_diff('different metatables: %s %s', getmetatable(x), getmetatable(y))
+        add_diff('different metatables: %s, %s', getmetatable(x), getmetatable(y))
       end
       local inspected_keys = {} -- Set<keys>
       local depth = #path + 1
