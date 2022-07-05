@@ -136,7 +136,7 @@ local n1n2 = new(
     '086f21d0e5bfb84288e0c36892e100867b4be27181556167695ac0cff6a43311e88' ..
     '24e90')
 local p1 = new '0x44145cdc85a07da9b'
-local p2 = new '0x17af663a3b84710a1'
+local p2 = new '0x17af663a3b84710a1'  -- luacheck: ignore
 
 
 function BigIntTest:common_test_mul(op)
@@ -187,12 +187,13 @@ function BigIntTest:test_new()
 end
 
 
+-- luacheck: ignore
 function BigIntTest:test_randombits()
     local old_open = io.open
     local function mock_function()
         local mock = {call_count = 0, args_list = {}}
         return setmetatable(mock, {
-            __call = function(obj, ...)
+            __call = function(_obj, ...)
                 mock.args = {...}
                 mock.args_list[#mock.args_list + 1] = mock.args
                 mock.call_count = mock.call_count + 1
@@ -389,6 +390,7 @@ end
 function BigIntTest:test_kmul()
   self:common_test_mul(function(a, b)return a:kmul(b, 400) end)
   --n1, n2 = n1*n1, n2*n2  -- if you wanna test with bigger numbers
+  local measure_kmul = nil
   -- local measure_kmul = bigint.zero.kmul
   -- local measure_kmul = bigint.zero.kmul_unrolled
   -- local measure_kmul = bigint.zero.kmul_unrolled2
@@ -398,9 +400,9 @@ function BigIntTest:test_kmul()
       --collectgarbage()
       --collectgarbage()
       local start_base = os.clock()
-      for i=1, 100 do _=n1:bmul(n2) end
+      for _=1, 100 do local _=n1:bmul(n2) end
       local start_kmul = os.clock()
-      for i=1, 100 do _=measure_kmul(n1, n2, threshold) end
+      for _=1, 100 do local _=measure_kmul(n1, n2, threshold) end
       local now = os.clock()
       local ratio = 100*(now - start_kmul) / (start_kmul - start_base)
       print(('%5d: k=%-10g b=%-10g ratio=%-5g%%'):format(

@@ -87,7 +87,7 @@ local function new(n)
 end
 
 
-local function copy_if_singleton(n)
+local function copy_if_singleton(n)  -- luacheck: ignore
    if shared_singletons[n] then return n:copy() end
    return n
 end
