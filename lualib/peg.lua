@@ -44,7 +44,12 @@ function Grammar:_init()
   assert(getmetatable(self) ~= Grammar, 'Grammar is an abstract class')
 end
 
-
+-- returns an AST or (false and an error table with message:string, pos:int),
+-- the AST has the following attributes:
+--   1..n: Children AST nodes.
+--   "pos": (int 1..#parsed_string) position where the text was parsed.
+--   "len": (int 0..#parsed_string) length for the matched text.
+--   "grammar": Grammar instance that produced the AST node.
 function Grammar:parse(str, pos, context)
   if not context then
     pos = pos or 1
@@ -92,9 +97,64 @@ function Grammar:parse(str, pos, context)
 end
 
 
+-- `match` first calls the `parse` method to obtain the parsed AST, then that
+-- tree will be converted on a "response tree" built from tags and visitors
+-- responses.
+function Grammar:match(str)
+   local function visit(node, res)
+      local grammar = node.grammar
+      local tagname, visitor = grammar.tagname, grammar.visitor
+      -- We reuse the same res if there's no visitor at the current node because we
+      -- want to be able collect returns at multiple node levels:
+      local subres = visitor and {} or res
+      for i = 1, #node do
+         visit(node[i], subres)
+      end
+      if not tagname then return end
+
+      local value = (not visitor) and str:sub(node.pos, node.len) or visitor(subres, str, node)
+      if grammar.multiple_matches then
+         local values = res[tagname]
+         if not values then
+            values = {}
+            res[tagname] = values
+         end
+         values[#values + 1] = value
+      elseif res[tagname] then
+         error(('tag %s value redefined at %d'):format(tagname, node.pos))
+      end
+   end
+   local ast, err = self:parse(str)
+   if not ast then error(('%s at %d'):format(err.message, err.pos)) end
+   local res = {}
+   visit(ast, res)
+   return res
+end
+
+
+-- When `match` is executed (after parsing), this will set on the resulting object the
+-- given tagname with the result of the visitor or the parsed text if no visitor is provided.
+--   If the grammar matches more than once within the same response object an error will be thrown,
+-- use `mtag` instead and then the tagname will be associated to a list of the captures.
+--   The visitor will receive three arguments, a table containing the associations for the
+-- tagnames of children nodes, the whole string being parsed (not just the captured part)
+-- and its AST node.
+function Grammar:tag(tagname, visitor)
+   self.tagname = tagname
+   self.visitor = visitor
+   return self
+end
+function Grammar:mtag(tagname, visitor)
+   self.tagname = tagname
+   self.visitor = visitor
+   self.multiple_matches = true
+   return self
+end
+
+
 function Concat:_init(...)
   self.children = {...}
-  for i, child in ipairs(self.children) do
+  for _, child in ipairs(self.children) do
     assert(oo.isinstance(child, Grammar))
   end
 end
@@ -128,18 +188,18 @@ end
 EOF.error_msg = 'expected end of text'
 
 
-function EOF:parse_impl(str, pos)
-  if pos == #str + 1 then return 0 end
-  return false
+function EOF:parse_impl(str, pos)  -- luacheck: ignore self
+   if pos == #str + 1 then return 0 end
+   return false
 end
 
 
 Any.error_msg = 'expected any character'
 
 
-function Any:parse_impl(str, pos)
-  if pos <= #str then return 1 end
-  return false
+function Any:parse_impl(str, pos)  -- luacheck: ignore self
+   if pos <= #str then return 1 end
+   return false
 end
 
 
@@ -170,9 +230,10 @@ end
 function Power:_init(min, max, child)
   assert(type(min) == 'number')
   assert(type(max) == 'number')
-  assert(min <= 0)
+  assert(min >= 0)
   assert(min <= max)
   assert(oo.isinstance(child, Grammar))
+  self.min, self.max, self.child = min, max, child
 end
 
 
@@ -206,14 +267,14 @@ end
 
 function Choice:_init(...)
   self.children = {...}
-  for i, child in ipairs(self.children) do
+  for _, child in ipairs(self.children) do
     assert(oo.isinstance(child, Grammar))
   end
 end
 
 
 function Choice:parse_impl(str, pos, context)
-  for i, child in ipairs(self.children) do
+  for _, child in ipairs(self.children) do
     local r = child:parse(str, pos, context)
     if r then return {r, len=r.len} end
   end
@@ -228,10 +289,8 @@ end
 
 
 function PosLA:parse_impl(str, pos, context)
-  context.report_errors = false
   local res = self.child:parse(str, pos, context)
-  context.report_errors = true
-  if res then return 0 else return false end
+  if res then return {res, len=0} else return false end
 end
 
 
@@ -242,9 +301,10 @@ end
 
 
 function NegLA:parse_impl(str, pos, context)
+  local last_report_errors = context.report_errors
   context.report_errors = false
   local res = self.child:parse(str, pos, context)
-  context.report_errors = true
+  context.report_errors = last_report_errors
   if res then return false else return 0 end
 end
 
