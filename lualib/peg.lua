@@ -33,10 +33,14 @@ local Choice =     oo.class(Grammar)
 local PosLA =      oo.class(Grammar)
 local NegLA =      oo.class(Grammar)
 
-
--- grammar direct children's metatables will be the Grammar instance
+-- One characteristic of adding the metamethod __call to the metatables is
+-- that when Lua calls it, it passes the table being "called" as the first
+-- parameter to the function, so the Grammar's (and Power's) children have
+-- to be called with, for instance:
+--   local peg = require 'lualib.peg'
+--   local grammar = peg.String' x'
+-- Grammar's direct children metatables are the Grammar table itself:
 Grammar.__call = Grammar.new
--- so for Power children
 Power.__call = Grammar.new
 
 
@@ -207,10 +211,15 @@ function Set:_init(text)
   self.text = text
   self.error_msg = ('expected any character in ranges %q'):format(text)
   assert(type(text) == 'string')
-  assert(#text % 2 == 0)
+  assert(#text % 2 == 0 and #text > 0)
+  local bytes = {}
   for i = 1, #text, 2 do
     local f, t = text:byte(i, i+1)
     assert(f <= t)
+    for b = f, t do
+      assert(not bytes[b], 'duplicated char in set')
+      bytes[b] = true
+    end
   end
 end
 
