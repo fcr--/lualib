@@ -55,9 +55,15 @@ local record BigInt
     divmod_atom: function(bigint, integer): bigint, integer
     divqr: function(bigint, bigint): bigint, bigint
 
+    -- decompose into a list of prime integers
+    factor: function(bigint): {bigint}
+
     -- gcd followed by bézout coefficients
     gcd: function(bigint, bigint): bigint, bigint, bigint
-    
+
+    -- modular inverse, x such that x*self % mod = 1
+    invmod: function(bigint, mod: bigint): bigint
+
     -- returns true if the number is a multiple of 2
     iseven: function(bigint): boolean
 
@@ -83,6 +89,9 @@ local record BigInt
     -- add ignoring signs:
     mutable_unsigned_add: function(bigint, other: bigint)
     mutable_unsigned_add_atom: function(bigint, atom: integer)
+
+    -- returns self raised to the power of p
+    pow: function(bigint, p: bigint): bigint
 
     -- fast equivalent alternative to (x^power%mod)
     powmod: function(x: bigint, power: bigint, mod: bigint): bigint

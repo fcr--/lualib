@@ -369,6 +369,22 @@ function BigIntTest:test_divqr()
 end
 
 
+function BigIntTest:test_factor()
+  for n, fs in ipairs{{2}, {3}, {2,2}, {5}, {2,3}, {7}, {2,2,2}, {3,3}, {2,5},
+    {11}, {2,2,3}, {13}, {2,7}, {3,5}, {2,2,2,2}, {17}, {2,3,3}, {19}, {2,2,5}} do
+    local factors = {}
+    for i = 1, #fs do
+      factors[i] = new(fs[i])
+    end
+    self:assert_deep_equal(factors, new(n+1):factor())
+  end
+  local f4 = new(65537)  -- largest *known* fermat prime
+  self:assert_deep_equal({f4}, f4:factor())
+  self:assert_deep_equal({new(2), new(2), new(3), new(29), new(379), new(683),
+    new(3331), new(4111), new(63629)}, (p1 + bigint.one):factor())
+end
+
+
 function BigIntTest:test_gcd()
   self:assert_deep_equal({n1:gcd(n1)}, {n1, bigint.one, bigint.zero})
   self:assert_deep_equal({new(718):gcd(new(1079))}, {bigint.one, new(269), new(-179)})

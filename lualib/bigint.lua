@@ -18,12 +18,13 @@ local lshift = bit.lshift
 local bigint = {}
 local mt = {__index = bigint}
 
-local one = setmetatable({1, sign=1}, mt)
 local zero = setmetatable({sign=0}, mt)
+local one = setmetatable({1, sign=1}, mt)
+local two = setmetatable({2, sign=1}, mt)
 local tenmillion = setmetatable({38528, 152, sign=1}, mt)
 
 local shared_singletons = {
-   [one]=true, [zero]=true, [tenmillion]=true
+   [zero]=true, [one]=true, [two]=true, [tenmillion]=true
 }
 
 local atombits = 16
@@ -481,6 +482,35 @@ function bigint:divqr_atom(d)
 end
 
 
+function bigint:factor()
+   assert(self > one, 'number must be > 1')
+   local res = {}
+
+   -- for now let's use a trivial factorization method.
+   while self:iseven() do
+      res[#res+1] = two
+      self = self:rshift(1)
+   end
+   local bound = self:sqrt()
+   local divisor = empty(1)  -- we are going to mutate it
+   divisor[1] = 3
+   while divisor <= bound do
+      local q, r = self:divmod(divisor)
+      if r.sign == 0 then
+         res[#res+1] = divisor:copy()
+         self = q
+         bound = self:sqrt()
+      else
+         divisor:mutable_unsigned_add_atom(2)
+      end
+   end
+   if self ~= one then
+      res[#res+1] = self
+   end
+   return res
+end
+
+
 function bigint:gcd(other)
    if self.sign < 0 then self = self:abs() end
    if other.sign < 0 then other = other:abs() end
@@ -497,6 +527,7 @@ function bigint:gcd(other)
 end
 
 
+-- Modular Inverse, returns n such that: self*n % mod = 1
 function bigint:invmod(mod)
    return select(2, self:gcd(mod)) % mod
 end
@@ -959,7 +990,8 @@ return {
    fromstring = fromstring,
    mt = mt,
    new = new,
-   one = one,
    randombits = randombits,
    zero = zero,
+   one = one,
+   two = two,
 }
