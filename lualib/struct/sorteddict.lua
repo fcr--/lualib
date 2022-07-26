@@ -191,8 +191,13 @@ local function visit_range(t, callback, kkf, kkt)
     callback(t)
   end
   if kkt == nil or t.kk < kkt then
-    visit_range(t[2], callback, kkf, kkt)
+    return visit_range(t[2], callback, kkf, kkt)
   end
+end
+
+
+function SortedDict:visit(visitor, from, to)
+  visit_range(self, function(t) return visitor(t.k, t.v) end, from, to)
 end
 
 
@@ -224,7 +229,8 @@ end
 
 
 function SortedDict:pairs(from, to)
-  -- iterates in-order the specified range (defaulting to start, finish if nil) of the dict, yielding (k, v) at each step
+  -- iterates in-order the specified range (defaulting to start, finish if nil) of the dict,
+  -- yielding (k, v) at each step
   return coroutine.wrap(function()
     visit_range(self.root, function(t)
       coroutine.yield(t.k, t.v)
