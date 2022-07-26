@@ -11,7 +11,7 @@ function SortedDictTest:test_empty()
   self:assert_deep_equal({}, sd:values())
   self:assert_deep_equal({}, sd:items())
   local count = 0
-  for k, v in sd:pairs() do count = count + 1 end
+  for _ in sd:pairs() do count = count + 1 end
   self:assert_equal(count, 0)
   self:assert_nil(sd:get 'k')
 end

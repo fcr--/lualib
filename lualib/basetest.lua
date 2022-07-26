@@ -56,8 +56,8 @@ function BaseTest:run_all_tests(opts)
   local results = self:run_tests_named(opts, (unpack or table.unpack)(method_names))
 
   local subopts = opts.skip_summary and opts or setmetatable({skip_summary=true}, {__index=opts})
-  for _, cls in ipairs(self._linked_classes or {}) do
-    for _, res in ipairs(cls:run_all_tests(subopts)) do
+  for _, linked_class in ipairs(self._linked_classes or {}) do
+    for _, res in ipairs(linked_class:run_all_tests(subopts)) do
       results[#results + 1] = res
     end
   end
@@ -101,7 +101,7 @@ end
 
 
 -- class method:
-function BaseTest:run_tests_named(opts, ...)
+function BaseTest:run_tests_named(_opts, ...)
   local results = {} -- list of errors
 
   -- takes a list of method names
