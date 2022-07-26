@@ -9,7 +9,7 @@ local function class(super)
       return obj
     end
   end
-  
+
   return mt
 end
 
