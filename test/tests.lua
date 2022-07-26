@@ -13,6 +13,7 @@ local Tests = oo.class(BaseTest)
   :link_class(require 'test.json')
   :link_class(require 'test.struct.sorteddict')
   :link_class(require 'test.struct.sslattice')
+  :link_class(require 'test.struct.tree23')
 
 
 Tests:run_if_main()
