@@ -5,7 +5,7 @@ local record Tree23<K, V>
    set: function(Tree23<K, V>, K, V): Tree23<K, V>, boolean
    min: function(Tree23<K, V>): K, V
    max: function(Tree23<K, V>): K, V
-   -- TODO: del: function(Tree23<K, V>, K): Tree23<K, V>, V, boolean
+   del: function(Tree23<K, V>, K): Tree23<K, V>, V, boolean
 
    visit: function(Tree23<K, V>, visitor: function(K, V), from: K, to: K)
    keys: function(Tree23<K, V>, from: K, to: K): {K}
