@@ -1,4 +1,6 @@
 local record Tree23<K, V>
+   metamethod __tostring: function(Tree23<K, V>): string
+
    getkv: function(Tree23<K, V>, K): K, V
    get: function(Tree23<K, V>, K): V
    has: function(Tree23<K, V>, K): boolean
@@ -18,6 +20,8 @@ local record Tree23<K, V>
    items: function(Tree23<K, V>, from: K, to: K): {KeyValue}
    pairs: function(Tree23<K, V>, from: K, to: K): (function(): K, V)
    totable: function(Tree23<K, V>, from: K, to: K): {K: V}
+   setsorteditems: function(Tree23<K, V>, {KeyValue}, from: integer, to:integer): Tree23<K, V>
+   settable: function(Tree23<K, V>, {K, V}): Tree23<K, V>
 end
 
 local empty = Tree23

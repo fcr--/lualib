@@ -202,6 +202,28 @@ function Tree23Test:test_numbers_1_100()
 end
 
 
+function Tree23Test:test_setsorteditems()
+   local items = {}
+   local t
+   for i = 1, 100 do
+      items[i] = {k=i, v=tostring(i)}
+      t = empty:setsorteditems(items)
+      self:assert_deep_equal(items, t:items())
+   end
+   items[101] = {k=101, v='101'}
+   items[102] = {k=102, v='102'}
+   t = t:setsorteditems(items, 101, 102)
+   self:assert_deep_equal(items, t:items())
+end
+
+function Tree23Test:test_settable()
+   local t1 = empty:settable{foo=2, taz=3, bar=1}
+   self:assert_deep_equal({bar=1, foo=2, taz=3}, t1:totable())
+   local t2 = t1:settable{foo=4, ccc=5}
+   self:assert_deep_equal({bar=1, ccc=5, foo=4, taz=3}, t2:totable())
+end
+
+
 Tree23Test:run_if_main()
 
 

@@ -375,6 +375,74 @@ function Tree23:totable(from, to)
 end
 
 
+function Tree23:setsorteditems(items, from, to)
+   local prevk
+   for i = from or 1, to or #items do
+      local k = items[i].k
+      assert(prevk == nil or k > prevk)
+      prevk = k
+      self = self:set(k, items[i].v)
+   end
+   return self
+end
+
+function EmptyTree:setsorteditems(items, from, to)
+   -- Example valid trees:
+   -- 1   12    2     3     3      24         26        4
+   --          1 3  12 4  12 45  1 3 5  .. 12 45 78   2   6
+   --                                                1 3 5 7
+   -- (h=1) 1..2, (h=2) 3..8, (h=3) 7..26, ..., h^2-1..h^3-1
+   -- Goals:
+   --    Try to make the tree as shallow as possible.
+   --    Greedly (if possible) try to use 3-Trees from the root.
+   -- Valid ranges for 2-Trees and 3-Trees:
+   --    h=1:  1..1,   2..2
+   --    h=2:  3..5,   5..8
+   --    h=3:  7..17, 11..26
+   --    h=4: 15..53, 23..80
+   local function rec(h, f, t)
+      local len = t-f+1
+      if h==0 then
+         assert(len == 0)
+         return empty
+      elseif len >= 3*2^(h-1) - 1 then
+         local i = f + math.floor((len-2)/3)
+         local j = f + math.floor((len-2)*2/3) + 1
+         local p = rec(h-1, f, i-1)
+         local q = rec(h-1, i+1, j-1)
+         local r = rec(h-1, j+1, t)
+         return ThreeTree:new(items[i].k, items[i].v, items[j].k, items[j].v, p, q, r)
+      else
+         local i = f + math.floor((len-1)/2)
+         local p = rec(h-1, f, i-1)
+         local q = rec(h-1, i+1, t)
+         return TwoTree:new(items[i].k, items[i].v, p, q)
+      end
+   end
+   from = from or 1
+   to = to or #items
+   local len = to - from + 1
+   local prevk = items[from].k
+   for i = from + 1, to do
+      local k = items[i].k
+      assert(k > prevk)
+      prevk = k
+   end
+   local h = 1 + math.floor(math.log(len+.5) / math.log(3))
+   return rec(h, from, to)
+end
+
+
+function Tree23:settable(t)
+   local items = {}
+   for k, v in pairs(t) do
+      items[#items+1] = {k=k, v=v}
+   end
+   table.sort(items, function(x, y) return x.k < y.k end)
+   return self:setsorteditems(items)
+end
+
+
 function EmptyTree:__tostring()
    return '{}'
 end
