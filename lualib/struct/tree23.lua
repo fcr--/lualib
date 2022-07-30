@@ -11,22 +11,51 @@ local TwoTree = oo.class(Tree23)
 local ThreeTree = oo.class(Tree23)
 
 local empty = EmptyTree:new()
+empty.height = 0
+
+-- If true, it can make deletions slightly faster at O(log n) vs O((log n)²)
+-- since we reuse maxk; however these extra attributes consume some memory.
+local VALIDATE = true
 
 function TwoTree:_init(ak, av, p, q)
+   p = p or empty
+   q = q or empty
    self.ak = ak
    self.av = av
-   self.p = p or empty
-   self.q = q or empty
+   self.p = p
+   self.q = q
+   if VALIDATE then
+      assert(p.height == q.height)
+      assert(p.maxk == nil or ak > p.maxk)
+      assert(q.mink == nil or ak < q.mink)
+      if p.mink ~= nil then self.mink = p.mink else self.mink = ak end
+      if p.maxk ~= nil then self.maxk = q.maxk else self.maxk = ak end
+      self.height = p.height + 1
+   end
 end
 
 function ThreeTree:_init(ak, av, bk, bv, p, q, r)
+   p = p or empty
+   q = q or empty
+   r = r or empty
    self.ak = ak
    self.av = av
    self.bk = bk
    self.bv = bv
-   self.p = p or empty
-   self.q = q or empty
-   self.r = r or empty
+   self.p = p
+   self.q = q
+   self.r = r
+   if VALIDATE then
+      assert(p.height == q.height and q.height == r.height)
+      assert(ak < bk)
+      assert(p.maxk == nil or ak > p.maxk)
+      assert(q.maxk == nil or ak < q.maxk)
+      assert(q.mink == nil or bk > q.mink)
+      assert(r.mink == nil or bk < r.mink)
+      if p.mink ~= nil then self.mink = p.mink else self.mink = ak end
+      if r.maxk ~= nil then self.maxk = r.maxk else self.maxk = bk end
+      self.height = p.height + 1
+   end
 end
 
 function EmptyTree:getkv(_key) end
@@ -131,9 +160,7 @@ function ThreeTree:set(key, value)
       q, incr = q:set(key, value)
       if incr then
          local newp, newq = TwoTree:new(ak, av, p, q.p), TwoTree:new(bk, bv, q.q, r)
-         -- since incr is true we know q is a new object, so we can mutate it safely:
-         q.p, q.q = newp, newq
-         return q, true
+         return TwoTree:new(q.ak, q.av, newp, newq), true
       end
    else
       r, incr = r:set(key, value)
@@ -142,6 +169,137 @@ function ThreeTree:set(key, value)
       end
    end
    return ThreeTree:new(ak, av, bk, bv, p, q, r), false
+end
+
+
+function EmptyTree:del()
+   return empty, nil, false
+end
+
+function TwoTree:del(key)
+   local p, q, ak, av = self.p, self.q, self.ak, self.av
+   if rawequal(self.p, empty) then
+      if key == ak then return empty, av, true end
+      return self, nil, false
+   end
+   local val, decr
+   if key <= ak then
+      if key == ak then
+         local maxk = p.maxk or p:max()
+         p, val, decr = p:del(maxk)
+         ak, av, val = maxk, val, av
+      else
+         p, val, decr = p:del(key)
+      end
+      if decr then
+         if oo.isinstance(q, TwoTree) then
+            --     X            ()
+            --  ()    Y   =>    XY
+            --  l    m r       l m r
+            return ThreeTree:new(ak, av, q.ak, q.av, p, q.p, q.q), val, true
+         end
+         --     X                 Y
+         --  ()    YZ    =>    X     Z
+         --  a    b c d       a b   c d
+         local newp = TwoTree:new(ak, av, p, q.p)
+         local newq = TwoTree:new(q.bk, q.bv, q.q, q.r)
+         return TwoTree:new(q.ak, q.av, newp, newq), val, false
+      end
+   else
+      q, val, decr = q:del(key)
+      if decr then
+         if oo.isinstance(p, TwoTree) then
+            --     X             ()
+            --   Y    ()   =>    XY
+            --  l m    r        l m r
+            return ThreeTree:new(p.ak, p.av, ak, av, p.p, p.q, q), val, true
+         end
+         --      Z                  Y
+         --   XY    ()    =>     X     Z
+         -- a b c    d          a b   c d
+         local newp = TwoTree:new(p.ak, p.av, p.p, p.q)
+         local newq = TwoTree:new(ak, av, p.r, q)
+         return TwoTree:new(p.bk, p.bv, newp, newq), val, false
+      end
+   end
+   return TwoTree:new(ak, av, p, q), val, false
+end
+
+function ThreeTree:del(key)
+   local ak, av, bk, bv = self.ak, self.av, self.bk, self.bv
+   local p = self.p
+   if rawequal(p, empty) then
+      if key == ak then return TwoTree:new(bk, bv), av, false end
+      if key == bk then return TwoTree:new(ak, av), bv, false end
+      return self, nil, false
+   end
+   local q, r, val, decr = self.q, self.r
+   if key <= ak then
+      if key == ak then
+         local maxk = p.maxk or p:max()
+         p, val, decr = p:del(maxk)
+         ak, av, val = maxk, val, av
+      else
+         p, val, decr = p:del(key)
+      end
+      if decr then
+         if oo.isinstance(q, TwoTree) then
+            --      XZ                 Z
+            --  ()   Y   d   =>    XY     d
+            --  a   b c           a b c
+            local newp = ThreeTree:new(ak, av, q.ak, q.av, p, q.p, q.q)
+            return TwoTree:new(bk, bv, newp, r), val, false
+         end
+         --      WZ                  XZ
+         -- ()   XY    e   =>    W    Y   e
+         -- a   b c d           a b  c d
+         local newp = TwoTree:new(ak, av, p, q.p)
+         local newq = TwoTree:new(q.bk, q.bv, q.q, q.r)
+         return ThreeTree:new(q.ak, q.av, bk, bv, newp, newq, r), val, false
+      end
+   elseif key <= bk then
+      if key == bk then
+         local maxk = q.maxk or q:max()
+         q, val, decr = q:del(maxk)
+         bk, bv, val = maxk, val, bv
+      else
+         q, val, decr = q:del(key)
+      end
+      if decr then
+         -- Here we took the arbitrary decision to rebalance to the right.
+         if oo.isinstance(r, TwoTree) then
+            --      XY             X
+            --  a   ()   Z  =>  a    YZ
+            --      b   c d         b c d
+            local newq = ThreeTree:new(bk, bv, r.ak, r.av, q, r.p, r.q)
+            return TwoTree:new(ak, av, p, newq), val, false
+         end
+         --     WX                  WY
+         -- a   ()   YZ    =>   a   X    Z
+         --     b   c d e          b c  d e
+         local newq = TwoTree:new(bk, bv, q, r.p)
+         local newr = TwoTree:new(r.bk, r.bv, r.q, r.r)
+         return ThreeTree:new(ak, av, r.ak, r.av, p, newq, newr), val, false
+      end
+   else
+      r, val, decr = r:del(key)
+      if decr then
+         if oo.isinstance(q, TwoTree) then
+            --     XZ             X
+            --  a   Y  ()  =>  a    YZ
+            --     b c  d          b c d
+            local newq = ThreeTree:new(q.ak, q.av, bk, bv, q.p, q.q, r)
+            return TwoTree:new(ak, av, p, newq), val, false
+         end
+         --      WZ                  WY
+         -- a    XY   ()    =>   a   X    Z
+         --    b c d   e            b c  d e
+         local newq = TwoTree:new(q.ak, q.av, q.p, q.q)
+         local newr = TwoTree:new(bk, bv, q.r, r)
+         return ThreeTree:new(ak, av, q.bk, q.bv, p, newq, newr), val, false
+      end
+   end
+   return ThreeTree:new(ak, av, bk, bv, p, q, r), val, false
 end
 
 
@@ -214,6 +372,21 @@ function Tree23:totable(from, to)
    local res = {}
    self:visit(function(k, v) res[k] = v end, from, to)
    return res
+end
+
+
+function EmptyTree:__tostring()
+   return '{}'
+end
+
+function TwoTree:__tostring()
+   return ('{%s, %s=%s, %s}'):format(self.p, self.ak, self.av, self.q)
+end
+
+function ThreeTree:__tostring()
+   return ('{%s, %s=%s, %s, %s=%s, %s}'):format(
+      self.p, self.ak, self.av, self.q, self.bk, self.bv, self.r
+   )
 end
 
 

@@ -10,7 +10,9 @@ local three_mt = getmetatable(empty:set(1):set(2))
 
 function Tree23Test:test_empty()
    self:assert_not_nil(empty_mt)
-   self:assert_deep_equal(setmetatable({}, empty_mt), empty)
+   for k in ('ak av bk bv p q r'):gmatch '%S+' do
+      self:assert_nil(empty[k])
+   end
    self:assert_nil(empty:getkv 'k')
    self:assert_nil(empty:get 'k')
    self:assert_equal(false, empty:has 'k')
@@ -29,8 +31,9 @@ function Tree23Test:test_single_2tree()
    local single, incr = empty:set('foo', 42)
    self:assert_equal(true, incr)
    self:assert_not_equal(empty_mt, two_mt)
-   local expected = setmetatable({ak='foo', av=42, p=empty, q=empty}, two_mt)
-   self:assert_deep_equal(expected, single)
+   for k, expected in pairs {ak='foo', av=42, p=empty, q=empty} do
+      self:assert_equal(expected, single[k])
+   end
    self:assert_nil(single:get 'bar')
    self:assert_nil(single:get 'zzz')
    local err = self:assert_error(single.get, single, 42)
@@ -38,8 +41,9 @@ function Tree23Test:test_single_2tree()
    self:assert_equal(42, single:get 'foo')
 
    local single2, incr2 = single:set('foo', 43)
-   expected = setmetatable({ak='foo', av=43, p=empty, q=empty}, two_mt)
-   self:assert_deep_equal(expected, single2)
+   for k, expected in pairs {ak='foo', av=43, p=empty, q=empty} do
+      self:assert_equal(expected, single2[k])
+   end
    self:assert_equal(false, incr2)
    self:assert_equal(42, single:get 'foo')
 
@@ -94,11 +98,12 @@ function Tree23Test:test_single_3tree()
 
    self:assert_equal(false, incr)
    self:assert_deep_equal(t, empty:set('d', 4):set('b', 2))
-   local expected = setmetatable({
+   for k, expected in pairs {
       ak='b', av=2, bk='d', bv=4,
       p=empty, q=empty, r=empty,
-   }, three_mt)
-   self:assert_deep_equal(expected, t)
+   } do
+      self:assert_equal(expected, t[k])
+   end
    self:assert_not_equal(two_mt, three_mt)
 
    self:assert_nil(t:get 'a')
@@ -182,6 +187,18 @@ function Tree23Test:test_numbers_1_100()
       self:assert_nil(t:get(i))
    end
    self:assert_deep_equal({1, '1'}, {t:min()})
+
+   -- now it's time to delete everything:
+   local val
+   for i = 1, 100 do nums[i]=i; avail[i]=i end
+   while next(avail) do
+      local pos = math.random(#avail)
+      t, val = t:del(avail[pos])
+      self:assert_equal(val, tostring(avail[pos]))
+      avail[pos] = avail[#avail]
+      avail[#avail] = nil
+   end
+   self:assert_equal(t, empty)
 end
 
 
