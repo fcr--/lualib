@@ -19,7 +19,7 @@ end
 function SSLatticeTest:test_cache()
   collectgarbage()
   self:assert_equal(empty.cache_stats().trees, 1)
-  local e = empty:add 'bb':add 'b'
+  local _ = empty:add 'bb':add 'b'
   assert(empty.cache_stats().trees >= 3)
   collectgarbage()
   -- {}, {b={}}, {b={b={}}}

@@ -70,12 +70,12 @@ function SSLattice:add(word)
   local c, cb = word:sub(1,1), word:byte()
   local hash = self.hash
   if self[c] then
-    hash = hash - self[c].hash * c:byte()
+    hash = hash - self[c].hash * cb
     res[c] = self[c]:add(word:sub(2))
   else
     res[c] = self.empty:add(word:sub(2))
   end
-  res.hash = bit.band(hash + res[c].hash * c:byte(), -1)
+  res.hash = bit.band(hash + res[c].hash * cb, -1)
   return unify(res)
 end
 
@@ -104,7 +104,7 @@ function SSLattice:traverse(prefix, options)
     if options.exact and #k > #prefix then return end
     if (#k >= #prefix or options.partial) and
         (not options.final or k:byte(#k) == options.final:byte()) then
-      coroutine.yield(k, node.value)
+      coroutine.yield(k)
     end
     for c, subnode in pairs(node) do
       if type(c)=='string' and #c==1 and (#k>=#prefix or match(#k+1, c)) then
@@ -157,7 +157,7 @@ function SSLattice:load(bindata)
     cursor = cursor + 1
     local t = setmetatable({}, getmetatable(self))
     t.hash = self.empty.hash
-    for i = 0, ccount - 1 do
+    for _ = 0, ccount - 1 do
       local cb, rl, rh = bindata:byte(cursor, cursor + 2)
       cursor = cursor + 3
       local subt = dicts[1 + rl + rh*256]
@@ -222,7 +222,7 @@ function SSLattice:__tostring()
     end
   end
   local lines = {}
-  for i, node in ipairs(fifo) do if node_idx[node] then
+  for _, node in ipairs(fifo) do if node_idx[node] then
     local line = {#lines+1}
     for k, v in pairs(node) do if type(k)=='string' and #k==1 then
       local item = {k}
@@ -241,16 +241,6 @@ function SSLattice:__tostring()
     lines[#lines+1] = table.concat(line, ',')
   end end
   return table.concat(lines, '\n')
-end
-
-
-if test then
-  assert(SSLattice.cache_stats().trees == 1)
-  e = SSLattice.empty:add 'bb':add 'b'
-  assert(SSLattice.cache_stats().trees >= 3)
-  collectgarbage()
-  -- {}, {b={}}, {b={b={}}}
-  assert(SSLattice.cache_stats().trees == 3)
 end
 
 
