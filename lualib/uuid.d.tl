@@ -13,8 +13,15 @@ local record uuid
    -- Time + Ethernet MAC based uuid
    -- TODO: v1: function(): string
 
-   -- Random uuid
-   -- TODO: v4: function(): string
+   -- Project name text into namespace UUID using MD5:
+   -- TODO: v3: function(ns: UUID, name: string): UUID
+
+   -- Requires a source of decent randomness like /dev/urandom or /dev/random:
+   v4: function(): UUID
+   v4: function(random_file: FILE): UUID
+
+   -- Project name text into namespace UUID using SHA-1:
+   v5: function(ns: UUID, name: string): UUID
 
    pattern: string
    pattern_ver: string  -- matches an uuid grouping the version octet
