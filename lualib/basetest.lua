@@ -224,7 +224,7 @@ function BaseTest:assert_error(fn, ...)
     if ok then
       local texts = {}
       for i = 2, select('#', ...) do
-        texts[i-1] = ('%s'):tostring(select(i, ...))
+        texts[i-1] = tostring(select(i, ...))
       end
       error(('expected an error, returned: %s'):format(table.concat(texts, ', ')))
     end
