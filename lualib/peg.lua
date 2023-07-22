@@ -129,7 +129,7 @@ function Grammar:match(str)
       end
    end
    local ast, err = self:parse(str)
-   if not ast then error(('%s at %d'):format(err.message, err.pos)) end
+   if err then error(('%s at %d'):format(err.message, err.pos)) end
    local res = {}
    visit(ast, res)
    return res
