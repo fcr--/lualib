@@ -101,7 +101,7 @@ end
 
 
 -- class method:
-function BaseTest:run_tests_named(_opts, ...)
+function BaseTest:run_tests_named(opts, ...)
   local results = {} -- list of errors
 
   -- takes a list of method names
@@ -125,11 +125,13 @@ function BaseTest:run_tests_named(_opts, ...)
       -- the coroutine yielded or threw an error, either way the value goes into ret
       res.exception = ret
       res.traceback = debug.traceback(co)
-      print(('on %s(%s):'):format(res.short_src, method_name))
-      print(('\27[31;1m%s\27[0m\n%s'):format(
-        tostring(res.exception):gsub('\n', '\27[0m\n\27[31;1m'),
-        res.traceback
-      ))
+      if not opts.skip_print_exceptions then
+        print(('on %s(%s):'):format(res.short_src, method_name))
+        print(('\27[31;1m%s\27[0m\n%s'):format(
+          tostring(res.exception):gsub('\n', '\27[0m\n\27[31;1m'),
+          res.traceback
+        ))
+      end
     end
     results[#results + 1] = res
 
@@ -138,6 +140,58 @@ function BaseTest:run_tests_named(_opts, ...)
 
   self:cleanup_class()
   return results
+end
+
+
+function BaseTest:add_cleanup(fn, ...)
+  local old_cleanup = self.cleanup
+  local args = {n=select('#', ...), ...}
+  -- we register a cleanup by temporarily overriding the cleanup method,
+  -- so that cleanups gets done in reverse:
+  function self:cleanup()
+    fn((unpack or table.unpack)(args, 1, args.n))
+    self.cleanup = old_cleanup
+    return self:cleanup()
+  end
+end
+
+
+function BaseTest:patch_global(name, mock)
+  return self:patch_attribute(_G, name, mock)
+end
+
+
+function BaseTest:patch_attribute(t, name, mock)
+  local old_value = t[name]
+  if old_value == nil then
+    error(('%s not found'):format(name))
+  end
+  self:add_cleanup(function()
+    t[name] = old_value
+  end)
+  t[name] = mock
+end
+
+
+function BaseTest:patch_upvar(f, name, mock)
+  -- Patching an upvar does not change what value the function is referencing,
+  -- instead it mutates the referenced variable, thus the change might be seen
+  -- in all the other functions also pointing to that variable.
+  local index = 0
+  for i = 1, debug.getinfo(f, 'u').nups do
+    local upvarname, upvarvalue = debug.getupvalue(f, i)
+    if upvarname == name then
+      self:add_cleanup(debug.setupvalue, f, i, upvarvalue)
+      return debug.setupvalue(f, i, mock)
+    end
+  end
+  local names = {}
+  for i = 1, debug.getinfo(f, 'u').nups do
+    names[i] = debug.getupvalue(f, i)
+  end
+  error(('upvar named %s was not found, try with: %s'):format(
+    name, table.concat(names, ', ')
+  ))
 end
 
 
