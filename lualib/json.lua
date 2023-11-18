@@ -24,7 +24,7 @@ local control_chars = {
 }
 
 -- default is_array implementation
-function json.is_array(value)
+function json.is_array(value, _path)
   local mt = getmetatable(value)
   if type(mt) == 'table' and mt.__jsontype ~= nil then
     return mt.__jsontype == 'array'

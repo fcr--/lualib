@@ -26,8 +26,8 @@ for _, package in ipairs{'bit', 'bit32'} do
 end
 assert(ok, 'bit library required')
 
-local cache = {} -- :: table<int, set<SSLattice>>
-local weakmt = {__mode = 'kv'}
+local weakmt = {__mode = 'v'}
+local cache = setmetatable({}, weakmt) -- :: table<int, set<SSLattice>>
 
 local function unify(t)
   local cent = cache[t.hash]
@@ -51,6 +51,8 @@ local function unify(t)
   else
     cache[t.hash] = setmetatable({[t]=1}, weakmt)
   end
+  -- to avoid random collection of the cent objects:
+  t.cent = cache[t.hash]
   return t
 end
 

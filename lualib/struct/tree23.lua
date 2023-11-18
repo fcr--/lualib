@@ -130,7 +130,8 @@ end
 
 function TwoTree:set(key, value)
    assert(key ~= nil, 'Trying to insert nil key')
-   local p, q, ak, av, incr = self.p, self.q, self.ak, self.av
+   local p, q, ak, av = self.p, self.q, self.ak, self.av
+   local incr
    if key <= ak then
       if key == ak then return TwoTree:new(key, value, p, q), false end
       p, incr = p:set(key, value)
@@ -148,7 +149,8 @@ end
 
 function ThreeTree:set(key, value)
    assert(key ~= nil, 'Trying to insert nil key')
-   local p, q, r, ak, av, bk, bv, incr = self.p, self.q, self.r, self.ak, self.av, self.bk, self.bv
+   local p, q, r, ak, av, bk, bv = self.p, self.q, self.r, self.ak, self.av, self.bk, self.bv
+   local incr
    if key <= ak then
       if key == ak then return ThreeTree:new(key, value, bk, bv, p, q, r), false end
       p, incr = p:set(key, value)
@@ -233,7 +235,8 @@ function ThreeTree:del(key)
       if key == bk then return TwoTree:new(ak, av), bv, false end
       return self, nil, false
    end
-   local q, r, val, decr = self.q, self.r
+   local q, r = self.q, self.r
+   local val, decr
    if key <= ak then
       if key == ak then
          local maxk = p.maxk or p:max()

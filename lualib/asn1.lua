@@ -77,13 +77,14 @@ local function encode_length(valuelen)
     return string.char(valuelen)
   end
 
+  -- TODO: test lengths >= 128
   local lenbytes = {}
   repeat
     lenbytes[#lenbytes+1] = string.char(valuelen % 256)
     valuelen = math.floor(valuelen / 256)
   until valuelen == 0
   lenbytes[#lenbytes+1] = string.char(128 + #lenbytes)
-  return table.concat(valuelen):reverse()
+  return table.concat(lenbytes):reverse()
 end
 
 local function decode_length(str, offset)

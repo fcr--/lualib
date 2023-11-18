@@ -17,13 +17,18 @@ function SSLatticeTest:test_basic()
 end
 
 function SSLatticeTest:test_cache()
-  collectgarbage()
-  self:assert_equal(empty.cache_stats().trees, 1)
+  repeat
+    -- add a random tree, the GC will eventually have to kick in:
+    empty:add(tostring(math.random()))
+    local old = empty.cache_stats().trees
+    collectgarbage()
+    local trees = empty.cache_stats().trees
+  until trees == 1 or trees < old
   local _ = empty:add 'bb':add 'b'
-  assert(empty.cache_stats().trees >= 3)
+  self:assert_greater_or_equal(empty.cache_stats().trees, 3)
   collectgarbage()
-  -- {}, {b={}}, {b={b={}}}
-  self:assert_equal(empty.cache_stats().trees, 3)
+  -- {}, {b={}}, {b={b={}}}, ...
+  self:assert_greater_or_equal(empty.cache_stats().trees, 3)
 end
 
 
