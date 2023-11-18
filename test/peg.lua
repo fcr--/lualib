@@ -5,9 +5,7 @@ local peg = require 'lualib.peg'
 local PegTest = oo.class(BaseTest)
 
 local function a(pos, len, g, ...)
-   local any_grammar = BaseTest.create_set('any_grammar',
-      function(v) return oo.isinstance(v, peg.Grammar) end)
-   return {pos=pos, len=len, grammar=g or any_grammar, ...}
+   return {pos=pos, len=len, grammar=g or BaseTest.any_instance(peg.Grammar, 'Grammar'), ...}
 end
 
 function PegTest:assert_not_parses(message, pos, g, text)
@@ -71,6 +69,52 @@ function PegTest:test_set()
          self:assert_not_parses('expected any character in ranges "pr2588"', 1, g, c)
       end
    end
+end
+
+function PegTest:test_power()
+   local child = peg.String 'x'
+   self:assert_error(peg.Power, 2, 1, child)  -- min > max
+   self:assert_error(peg.Power, -1, 2, child)  -- min < 0
+   self:assert_error(peg.Power, '1', 2, child)  -- min not number
+   self:assert_error(peg.Power, 1, '2', child)  -- max not number
+   self:assert_error(peg.Power, 1, 2, {})  -- child is not a Grammar
+   local g = peg.Power(2, 5, child)
+   self:assert_not_parses('expected string "x"', 1, g, '')
+   self:assert_not_parses('expected string "x"', 2, g, 'x')
+   local expected_ast = a(1, 1, g, a(1, 1, child))
+   for len = g.min, g.max do
+      expected_ast.len = len
+      expected_ast[len] = a(len, 1, child)
+      self:assert_deep_equal(expected_ast, g:parse(('x'):rep(len)))
+   end
+   self:assert_deep_equal(expected_ast, g:parse(('x'):rep(g.max+1)))
+end
+
+function PegTest:test_optional()
+   local child = peg.String 'x'
+   local g = peg.Optional(child)
+   self:assert_equal(g.min, 0)
+   self:assert_equal(g.max, 1)
+   self:assert_equal(g.child, child)
+   self:assert_equal(true, oo.isinstance(g, peg.Power))
+end
+
+function PegTest:test_zero_or_more()
+   local child = peg.String 'x'
+   local g = peg.ZeroOrMore(child)
+   self:assert_equal(g.min, 0)
+   self:assert_equal(g.max, math.huge)
+   self:assert_equal(g.child, child)
+   self:assert_equal(true, oo.isinstance(g, peg.Power))
+end
+
+function PegTest:test_one_or_more()
+   local child = peg.String 'x'
+   local g = peg.OneOrMore(child)
+   self:assert_equal(g.min, 1)
+   self:assert_equal(g.max, math.huge)
+   self:assert_equal(g.child, child)
+   self:assert_equal(true, oo.isinstance(g, peg.Power))
 end
 
 PegTest:run_if_main()
