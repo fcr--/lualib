@@ -356,6 +356,11 @@ end
 BaseTest.any_integer = BaseTest.create_set(
   'any integer', function(v) return type(v) == 'number' and math.floor(v) == v and v ~= v+1 end
 )
+function BaseTest.any_instance(cls, cls_name)
+   return BaseTest.create_set(
+      ('any instance of %s'):format(cls_name or cls), function(v) return oo.isinstance(v, cls) end
+   )
+end
 
 
 function BaseTest:assert_deep_equal(x, y, path, inspected, diffs)
