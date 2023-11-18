@@ -126,6 +126,8 @@ function Grammar:match(str)
          values[#values + 1] = value
       elseif res[tagname] then
          error(('tag %s value redefined at %d'):format(tagname, node.pos))
+      else
+         res[tagname] = value
       end
    end
    local ast, err = self:parse(str)
@@ -252,7 +254,7 @@ function Power:parse_impl(str, pos, context)
     local r = self.child:parse(str, pos + res.len, context)
     if not r then break end
     res[#res+1] = r
-    res.len = res.len + r
+    res.len = res.len + r.len
   end
   if #res >= self.min then return res end
   return false
