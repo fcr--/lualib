@@ -277,6 +277,7 @@ end
 
 
 function Choice:_init(...)
+  assert(select('#', ...) > 0)
   self.children = {...}
   for _, child in ipairs(self.children) do
     assert(oo.isinstance(child, Grammar))
