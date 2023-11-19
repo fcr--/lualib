@@ -117,6 +117,43 @@ function PegTest:test_one_or_more()
    self:assert_equal(true, oo.isinstance(g, peg.Power))
 end
 
+function PegTest:test_choice()
+   self:assert_error(peg.Choice)  -- no arguments
+   local x, xy, z = peg.String 'x', peg.String 'xy', peg.String 'z'
+   local g = peg.Choice(x, xy, z)
+   self:assert_deep_equal(a(1,1,g, a(1,1,x)), g:parse 'x')
+   -- Choice uses greedy selection, so xy will never be selected as x matches a superset first.
+   self:assert_deep_equal(a(1,1,g, a(1,1,x)), g:parse 'xy')
+   self:assert_not_parses('expected end of text', 2, peg.Concat(g, peg.EOF()), 'xy')
+   self:assert_deep_equal(a(1,1,g, a(1,1,z)), g:parse 'z')
+   self:assert_not_parses('expected string "x"', 1, g, '-')
+
+   local r = peg.String 'r'
+   g = peg.Choice(peg.Concat(x, r), peg.Concat(xy, r))
+   -- error message corresponds to longest match:
+   self:assert_not_parses('expected string "r"', 3, g, 'xyz')
+end
+
+function PegTest:test_posla()
+   local child = peg.String 'x'
+   local g = peg.PosLA(child)
+   self:assert_error(peg.PosLA)  -- missing arg / nil
+   self:assert_error(peg.PosLA, {})  -- incorrect mt
+   -- match without consuming input:
+   self:assert_deep_equal(a(1,0,g, a(1,1,child)), g:parse 'x')
+   self:assert_not_parses('expected string "x"', 1, g, '')
+end
+
+function PegTest:test_negla()
+   local child = peg.String 'x'
+   local g = peg.NegLA(child)
+   self:assert_error(peg.NegLA)  -- missing arg / nil
+   self:assert_error(peg.NegLA, {})  -- incorrect mt
+   -- match without consuming input nor adding any sub-asts:
+   self:assert_deep_equal(a(1,0,g), g:parse 'y')
+   self:assert_not_parses('syntax error', 1, g, 'x')
+end
+
 PegTest:run_if_main()
 
 return PegTest
