@@ -32,6 +32,7 @@ local OneOrMore =  oo.class(Power)
 local Choice =     oo.class(Grammar)
 local PosLA =      oo.class(Grammar)
 local NegLA =      oo.class(Grammar)
+local Ref =        oo.class(Grammar)
 
 -- One characteristic of adding the metamethod __call to the metatables is
 -- that when Lua calls it, it passes the table being "called" as the first
@@ -320,8 +321,17 @@ function NegLA:parse_impl(str, pos, context)
   if res then return false else return 0 end
 end
 
+function Ref:resolve(child)
+   self.child = child
+end
+
+function Ref:parse(...)
+   assert(self.child, 'unresolved reference')
+   return self.child:parse(...)
+end
+
 return {
   Grammar=Grammar, Concat=Concat, String=String, EOF=EOF, Any=Any, Set=Set,
   Power=Power, Optional=Optional, ZeroOrMore=ZeroOrMore, OneOrMore=OneOrMore,
-  Choice=Choice, PosLA=PosLA, NegLA=NegLA,
+  Choice=Choice, PosLA=PosLA, NegLA=NegLA, Ref=Ref
 }
