@@ -70,10 +70,10 @@ local iota_constants = {
   [23] = {hi=0x80000000, lo=0x80008008},
 }
 local function iota(state, ir)
-  -- here we modify state[0] and state[1] only (aka Lane(0,0)): RC = hi‖lo
+  -- here we modify state[0] and state[1] only (aka Lane(0,0)): RC = lo‖hi
   local round_constant = iota_constants[ir]
-  state[0] = bxor(0, round_constant.hi)
-  state[1] = bxor(0, round_constant.lo)
+  state[0] = bxor(state[0], round_constant.lo)
+  state[1] = bxor(state[1], round_constant.hi)
 end
 
 local function keccak_p24(state, nr)
@@ -90,6 +90,7 @@ end
 return {
   internals = {
     iota_constants = iota_constants,
+    iota = iota,
   },
   sha3_224 = nil,
   sha3_256 = nil,

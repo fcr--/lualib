@@ -37,6 +37,19 @@ function Sha3Test:test_iota_constants()
 end
 
 
+function Sha3Test:test_iota()
+  local state = {[0]=0x1337C0DE}
+  for i = 1, 49 do state[i] = bit.bor(state[i-1] * 3, 0) end
+  local expected = {[0]=state[0], (unpack or table.unpack)(state)}
+  for round = 0, 23 do
+    expected[0] = bit.bxor(expected[0], sha3.internals.iota_constants[round].lo)
+    expected[1] = bit.bxor(expected[1], sha3.internals.iota_constants[round].hi)
+    sha3.internals.iota(state, round)
+    self:assert_deep_equal(state, expected)
+  end
+end
+
+
 Sha3Test:run_if_main()
 
 
