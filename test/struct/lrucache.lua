@@ -6,8 +6,8 @@ local LruCacheTest = oo.class(BaseTest)
 
 
 function LruCacheTest:check_lru(lru, keys)
-  if #lru < 0 then error 'lru with negative size' end
-  if #lru == 0 then
+  if lru:count() < 0 then error 'lru with negative size' end
+  if lru:count() == 0 then
     self:assert_nil(next(lru.keys))
     self:assert_nil(lru.newest)
     self:assert_nil(lru.oldest)
@@ -16,10 +16,10 @@ function LruCacheTest:check_lru(lru, keys)
   local prev
   local cur = lru.newest
   local count = 0
-  --print('iterating', #lru, 'elements:')
+  --print('iterating', lru:count(), 'elements:')
   while cur do
     --print(('\t%d: %s={prev=%s, next=%s, key=%s, value=%s}'):format(
-    --    count, cur, cur.prev, cur.next, cur.key, cur.value))
+    --    count, tostring(cur), tostring(cur.prev), tostring(cur.next), cur.key, cur.value))
     self:assert_equal(cur.prev, prev)
     if prev then self:assert_equal(prev.next, cur) end
     self:assert_equal(lru.keys[cur.key], cur)
@@ -28,7 +28,7 @@ function LruCacheTest:check_lru(lru, keys)
     cur = cur.next
     count = count + 1
   end
-  self:assert_equal(count, #lru)
+  self:assert_equal(count, lru:count())
   self:assert_equal(lru.oldest, lru.keys[keys[count]])
 end
 
@@ -108,7 +108,6 @@ function LruCacheTest:test_eviction()
     keys[11] = nil
     lru:set(c, 1)
     self:check_lru(lru, keys)
-    print(table.concat(keys))
   end
 end
 
