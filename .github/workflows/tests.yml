@@ -38,7 +38,7 @@ jobs:
           echo ::group::Initialize venv-luajit
           ~/.luarocks/bin/vert init --lua-source=luajit venv-luajit
           echo ::endgroup::
-          . venv-luajit/bin/activate; lua test/tests.lua; deactivate
+          . venv-luajit/bin/activate; luajit test/tests.lua; deactivate
 
       - name: Test with lua5.3
         timeout-minutes: 5
