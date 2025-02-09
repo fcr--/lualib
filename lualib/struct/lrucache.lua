@@ -91,7 +91,7 @@ function LruCache:get(key)
   if item then
     self:_refresh(item)
   end
-  
+
   return self:peek(key)
 end
 
@@ -102,7 +102,7 @@ end
 function LruCache:del(key)
   local item = self.keys[key]
   if not item then return end
-  
+
   self.keys[item.key] = nil
   if item.next then item.next.prev = item.prev end
   if item.prev then item.prev.next = item.next end
