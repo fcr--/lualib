@@ -52,4 +52,4 @@ jobs:
         timeout-minutes: 1
         run: |
           luarocks --local install tl
-          tl check `find -name '*.tl'`
+          ~/.luarocks/bin/tl check `find -name '*.tl'`
