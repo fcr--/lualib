@@ -47,3 +47,9 @@ jobs:
           ~/.luarocks/bin/vert init --lua-version=5.3.6 venv-lua5.3
           echo ::endgroup::
           . venv-lua5.3/bin/activate; lua test/tests.lua; deactivate
+
+      - name: Check teal declaration files
+        timeout-minutes: 1
+        run: |
+          luarocks --local install tl
+          tl check `find -name '*.tl'`
