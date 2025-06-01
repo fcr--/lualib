@@ -31,6 +31,22 @@ function BaseTestTest:test_assert_equal()
   self:assert_equal(err:match 'expected 3 == 4' ~= nil, true)
 end
 
+
+function BaseTestTest:test_assert_error()
+  local ok, err
+  err = self:assert_error(error, 'foo')
+  self:assert_equal(err, 'foo')
+
+  ok, err = pcall(self.assert_error, self, function()end)
+  self:assert_equal(ok, false)
+  self:assert_pattern(err, 'expected an error')
+
+  ok, err = pcall(self.assert_error, self, 'not a function')
+  self:assert_equal(ok, false)
+  self:assert_pattern(err, 'invalid callable type')
+end
+
+
 function BaseTestTest:test_add_cleanup()
   local SampleTest = oo.class(BaseTest)
   local actions = {}

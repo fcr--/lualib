@@ -274,6 +274,7 @@ end
 
 
 function BaseTest:assert_error(fn, ...)
+  assert(not ({string=1, number=1, boolean=1, ['nil']=1})[type(fn)], 'invalid callable type')
   return (function(ok, ...)
     if ok then
       local texts = {}
