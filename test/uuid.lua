@@ -22,15 +22,14 @@ function UuidTest:test_v4()
     return {read=function(fd, n) self:assert_equal(n, 16) return bindata end}
   end
   for _, case in pairs{
-    {hex='5a7c6942-e937-bb9b-f8a9-8423fcdeca3e', res='5a7c6942-e937-4b9b-b8a9-8423fcdeca3e'},
-    {hex='35e796ae-de41-1669-bb45-bf6359343c56', res='35e796ae-de41-4669-bb45-bf6359343c56'},
-    {hex='6409345d-cdeb-f7b9-ef44-75a561a076a5', res='6409345d-cdeb-47b9-af44-75a561a076a5'},
-    {hex='4065a9c3-6f55-5f97-298f-2c2a65549f0a', res='4065a9c3-6f55-4f97-a98f-2c2a65549f0a'},
-    {hex='7741f130-bb2f-5b6b-c559-57caf5b47731', res='7741f130-bb2f-4b6b-8559-57caf5b47731'},
+    {hex='5a7c6942-e937-bb9b-f8a9-8423fcdeca3e', res='05c379e1-736b-4a38-b3cc-d58cf6384e9e'},
+    {hex='35e796ae-de41-1669-bb45-bf6359343c56', res='cf2751f0-2f27-4eaa-a718-0743641653af'},
+    {hex='6409345d-cdeb-f7b9-ef44-75a561a076a5', res='12a8cf08-6417-4c4e-b96c-837a7c5fcbca'},
   } do
-    local uuid = uuid.v4(file_mock(self:hextobin(case.hex)))
-    self:assert_uuid(uuid, case.res)
+    UUID.init_state(file_mock(self:hextobin(case.hex)))
+    self:assert_uuid(uuid.v4(), case.res)
   end
+  self:assert_uuid(uuid.v4(), '2caabe18-6c5f-4073-b6e1-95b0bef0bb54')
 end
 
 

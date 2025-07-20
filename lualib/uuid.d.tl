@@ -8,6 +8,10 @@ local record uuid
 
       -- constructor:
       new: function(cls: UUID, bytes_or_text: string): UUID
+
+      -- can be used if you don't have /dev/urandom or /dev/random, but it must
+      -- be a source of decent randomness (static method):
+      init_state: function(random_file: FILE)
    end
 
    -- Time + Ethernet MAC based uuid
@@ -16,9 +20,7 @@ local record uuid
    -- Project name text into namespace UUID using MD5:
    -- TODO: v3: function(ns: UUID, name: string): UUID
 
-   -- Requires a source of decent randomness like /dev/urandom or /dev/random:
    v4: function(): UUID
-   v4: function(random_file: FILE): UUID
 
    -- Project name text into namespace UUID using SHA-1:
    v5: function(ns: UUID, name: string): UUID

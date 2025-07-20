@@ -54,18 +54,26 @@ local function patch_version(bytes, version)
   )
 end
 
+local state
+function UUID.init_state(random_file)
+   if random_file then
+      state = assert(random_file:read(16), 'error reading 16 random bytes')
+   else
+      local fd = io.open('/dev/urandom', 'rb') or assert(io.open('/dev/random', 'rb'))
+      state = assert(random_file:read(16), 'error reading 16 random bytes')
+      fd:close()
+   end
+end
 
-local function v4(random_file)
-  local bytes
-  if random_file then
-    bytes = assert(random_file:read(16), 'error reading 16 random bytes')
-  else
-    local fd = io.open('/dev/urandom', 'rb') or assert(io.open('/dev/random', 'rb'))
-    bytes = assert(random_file:read(16), 'error reading 16 random bytes')
-    fd:close()
-  end
+local function v4()
+   if not state then UUID.init_state() end
 
-  return UUID:new(patch_version(bytes, 4))
+   -- we use sha1 as a safe-ish PRNG:
+   state = sha1(state, true)
+   -- by adding padding we hide the internal state for the next call:
+   local bytes = sha1('INIT'..state..'END', true):sub(1, 16)
+
+   return UUID:new(patch_version(bytes, 4))
 end
 
 
