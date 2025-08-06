@@ -60,7 +60,7 @@ function UUID.init_state(random_file)
       state = assert(random_file:read(16), 'error reading 16 random bytes')
    else
       local fd = io.open('/dev/urandom', 'rb') or assert(io.open('/dev/random', 'rb'))
-      state = assert(random_file:read(16), 'error reading 16 random bytes')
+      state = assert(fd:read(16), 'error reading 16 random bytes')
       fd:close()
    end
 end
