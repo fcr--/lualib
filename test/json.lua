@@ -104,6 +104,8 @@ end
 
 function JsonTest:test_parse_comments()
   self:assert_deep_equal(o{e=42}, json.parse '/*before*/{/*inside before*/"e"/*after key*/: /*before expr*/ 42 /*after"]}//expr*/}/*after*/')
+  -- comments inside of strings are just regular text:
+  self:assert_deep_equal(o{['/*x*/...//'] = '//.../*y*/'}, json.parse '{"/*x*/...//":"//.../*y*/"}')
   self:assert_deep_equal(a{true,false}, json.parse '/*a*/[/*b*/ true /*c*/, /*d*/false/*e*/]/*f*/')
   self:assert_deep_equal(o{a=1}, json.parse [[
     { // multiline comments are also supported, and they ignore anything inside them until \n: }]"" */ /* //...
@@ -111,6 +113,7 @@ function JsonTest:test_parse_comments()
       ://2
       1//,}...
     } // at the end too]])
+  self:assert_equal(false, (pcall(json.parse, '{/*comments /*can not be*/ nested*/}')))
 end
 
 
