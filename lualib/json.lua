@@ -251,6 +251,10 @@ local state_machine = {
       op = function(_, stack) stack[#stack+1] = Nil end
     }, {
       pattern = '^%s+'
+    }, {
+      pattern = '/%*.-%*/'
+    }, {
+      pattern = '//[^\n]*\n?'
     }
   },
   in_string = {
@@ -373,6 +377,10 @@ local state_machine = {
       end
     }, {
       pattern = '^%s+'
+    }, {
+      pattern = '/%*.-%*/'
+    }, {
+      pattern = '//[^\n]*\n?'
     }
   }
 }

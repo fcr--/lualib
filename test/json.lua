@@ -5,6 +5,9 @@ local json = require 'lualib.json'
 
 local JsonTest = oo.class(BaseTest)
 
+local function a(t) return setmetatable(t, json.Array) end
+local function o(t) return setmetatable(t, json.Object) end
+
 
 function JsonTest:test_number()
   self:assert_equal('42', json.encode(42))
@@ -47,7 +50,6 @@ end
 function JsonTest:test_array()
   self:assert_equal('[]', json.encode{})
   self:assert_equal('[42,"e"]', json.encode{42, 'e'})
-  local function a(t) return setmetatable(t, json.Array) end
   self:assert_equal('[]', json.encode(a{}))
   self:assert_equal('[[],[[]],[[[]]]]', json.encode{a{}, {a{}}, {{a{}}}})
   local t = {'infinite', {'loop'}}
@@ -72,8 +74,6 @@ end
 
 
 function JsonTest:test_parse()
-  local function a(t) return setmetatable(t, json.Array) end
-  local function o(t) return setmetatable(t, json.Object) end
   self:assert_equal(-42.25, json.parse '-42.25')
   self:assert_equal(true, json.parse 'true')
   self:assert_equal(false, json.parse 'false')
@@ -110,6 +110,21 @@ function test_parse_options()
   self:assert_deep_equal(a{1, nil, 3}, json.parse('[1, null, 3]', {null_as_nil=1, nil_holes_in_arrays=1}))
   -- object:
   self:assert_deep_equal(a{x=1, z=3}, json.parse('{"x":1,"y":null,"z":3}', {null_as_nil=1}))
+end
+
+
+function JsonTest:test_parse_comments()
+  self:assert_deep_equal(o{e=42}, json.parse '/*before*/{/*inside before*/"e"/*after key*/: /*before expr*/ 42 /*after"]}//expr*/}/*after*/')
+  -- comments inside of strings are just regular text:
+  self:assert_deep_equal(o{['/*x*/...//'] = '//.../*y*/'}, json.parse '{"/*x*/...//":"//.../*y*/"}')
+  self:assert_deep_equal(a{true,false}, json.parse '/*a*/[/*b*/ true /*c*/, /*d*/false/*e*/]/*f*/')
+  self:assert_deep_equal(o{a=1}, json.parse [[
+    { // multiline comments are also supported, and they ignore anything inside them until \n: }]"" */ /* //...
+      "a" //:
+      ://2
+      1//,}...
+    } // at the end too]])
+  self:assert_equal(false, (pcall(json.parse, '{/*comments /*can not be*/ nested*/}')))
 end
 
 
