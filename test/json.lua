@@ -102,6 +102,17 @@ function JsonTest:test_parse()
 end
 
 
+function test_parse_options()
+  self:assert_equal(nil, json.parse('null', {null_as_nil=1}))
+  -- array:
+  self:assert_deep_equal(a{}, json.parse('[null]', {null_as_nil=1}))
+  self:assert_deep_equal(a{1, 3}, json.parse('[1, null, 3]', {null_as_nil=1}))
+  self:assert_deep_equal(a{1, nil, 3}, json.parse('[1, null, 3]', {null_as_nil=1, nil_holes_in_arrays=1}))
+  -- object:
+  self:assert_deep_equal(a{x=1, z=3}, json.parse('{"x":1,"y":null,"z":3}', {null_as_nil=1}))
+end
+
+
 JsonTest:run_if_main()
 
 

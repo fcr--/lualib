@@ -6,7 +6,8 @@ json.Array = {__jsontype='array'}
 json.Object = {__jsontype='object'}
 
 -- sentinel value that can be used if you want to encode a null value
-json.Nil = setmetatable({}, {__tostring=function()return 'null'end})
+local Nil = setmetatable({}, {__tostring=function()return 'null'end})
+json.Nil = Nil
 
 local invalid_numeric_strings = {nan=1, inf=1, ['-inf']=1, ['-nan']=1}
 local replacement_code = 0xfffd -- '�'
@@ -168,7 +169,7 @@ function json.encode(value, opts, path, visiting, buffer)
   end
 
   local res
-  if value == json.Nil then
+  if value == Nil then
     buffer[#buffer+1] = 'null'
   elseif t == 'table' then
     if visiting[value] then
@@ -247,7 +248,7 @@ local state_machine = {
     }, {
       pattern = '^null',
       next_state = 'after_expression',
-      op = function(_, stack) stack[#stack+1] = json.Nil end
+      op = function(_, stack) stack[#stack+1] = Nil end
     }, {
       pattern = '^%s+'
     }
@@ -319,7 +320,7 @@ local state_machine = {
       next_state = 'default'
     }, {
       pattern = '^]',
-      op = function(_, st)
+      op = function(_, st, opts)
         local container = setmetatable({}, json.Array)
         local base = #st
         while base >= 2 and st[base] ~= open_array_mark do
@@ -328,14 +329,30 @@ local state_machine = {
           base = base - 1
         end
         assert(st[base] == open_array_mark, 'unexpected close bracket')
-        for i = base + 1, #st do
-          container[#container + 1], st[i] = st[i], nil
+        if not opts.null_as_nil then
+          -- no need to worry about nils:
+          for i = base + 1, #st do
+            container[#container + 1], st[i] = st[i], nil
+          end
+        else
+          local write_index = 1
+          for i = base + 1, #st do
+            local item = st[i]
+            if item ~= Nil then
+              container[write_index] = item
+              write_index = write_index + 1
+            elseif opts.nil_holes_in_arrays then
+              write_index = write_index + 1
+            end
+            st[i] = nil
+          end
         end
+
         st[base] = container
       end
     }, {
       pattern = '^}',
-      op = function(_, st)
+      op = function(_, st, opts)
         local container = setmetatable({}, json.Object)
         local base = #st
         while base >= 3 and st[base] ~= open_object_mark do
@@ -345,7 +362,11 @@ local state_machine = {
         end
         assert(st[base] == open_object_mark, 'unexpected close brace')
         for i = base + 1, #st, 2 do
-          container[st[i].key] = st[i+1]
+          local item = st[i+1]
+          if item == Nil and opts.null_as_nil then
+            item = nil
+          end
+          container[st[i].key] = item
           st[i], st[i+1] = nil, nil
         end
         st[base] = container
@@ -357,11 +378,13 @@ local state_machine = {
 }
 
 
-function json.parse(str)
+local _default_opts = {}
+function json.parse(str, opts)
   local stack = {}
   local state = state_machine.default
   local state_name = 'default'
   local i = 1
+  opts = opts or _default_opts
   while i <= #str do
     local matched = false
     --print(('i=%d, state_name=%s'):format(i, state_name))
@@ -372,7 +395,7 @@ function json.parse(str)
         assert(start == i, 'patterns should start with ^')
         i = finish + 1
         if transition.op then
-          transition.op(str:sub(start, finish), stack)
+          transition.op(str:sub(start, finish), stack, opts)
         end
         if transition.next_state then
           state = state_machine[transition.next_state]
@@ -388,6 +411,7 @@ function json.parse(str)
   end
   if #stack ~= 1 then error 'unexpected eof' end
   if not state.final then error 'invalid end state' end
+  if opts.null_as_nil and stack[1] == Nil then return nil end
   return stack[1]
 end
 
@@ -418,7 +442,7 @@ function json.pp(value, indent, maxline, buffer)
   end
   if type(value) == 'string' then
     buff[#buff+1] = ('%q'):format(value)
-  elseif type(value) == 'table' and value ~= json.Nil then
+  elseif type(value) == 'table' and value ~= Nil then
     local is_array = json.is_array(value)
     buff[#buff+1] = is_array and '[' or '{'
     local first = true
