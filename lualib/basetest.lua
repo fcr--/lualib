@@ -26,6 +26,7 @@ Example to start with:
 local oo = require 'lualib.oo'
 
 
+---@class BaseTest
 local BaseTest = oo.class()
 
 
@@ -364,52 +365,60 @@ function BaseTest.any_instance(cls, cls_name)
 end
 
 
-function BaseTest:assert_deep_equal(x, y, path, inspected, diffs)
-  if not path then
-    path = {} -- Stack<string>
-    inspected = {} -- Set<table>
-    diffs = {} -- List<string>
-  end
-  local function add_diff(fmt, ...)
-    diffs[#diffs + 1] = ('  %s: ' .. fmt):format(table.concat(path, '.'), ...)
-  end
-  if getmetatable(y) == SetMark then x,y=y,x end
-  if getmetatable(x) == SetMark then
-    if not x.matches(y) then
-      add_diff('expecting %s, found %s: %s', x.name, type(y), quote(y))
-    end
-  elseif type(x) ~= type(y) then
-    add_diff('different types: %s, %s', type(x), type(y))
-  elseif type(x) == 'table' then
-    if not inspected[x] or not inspected[y] then
-      inspected[x] = true
-      inspected[y] = true
-      if getmetatable(x) ~= getmetatable(y) then
-        add_diff('different metatables: %s, %s', getmetatable(x), getmetatable(y))
+function BaseTest:assert_deep_equal(x, y, opts, ctx)
+   if not opts then opts = {} end
+   if not ctx then
+      ctx = {
+         path = {}, ---@type string[]  a stack
+         inspected = {}, ---@type {[string]:true}
+         diffs = {}, ---@type string[]  a list
+      }
+   end
+   local function add_diff(fmt, ...)
+      ctx.diffs[#ctx.diffs + 1] = ('  %s: ' .. fmt):format(table.concat(ctx.path, '.'), ...)
+   end
+   if getmetatable(y) == SetMark then x,y=y,x end
+   if getmetatable(x) == SetMark then
+      if not x.matches(y) then
+         add_diff('expecting %s, found %s: %s', x.name, type(y), quote(y))
       end
-      local inspected_keys = {} -- Set<keys>
-      local depth = #path + 1
-      for k, v in pairs(x) do
-        inspected_keys[k] = true
-        path[depth] = k
-        self:assert_deep_equal(v, y[k], path, inspected, diffs)
+   elseif type(x) ~= type(y) then
+      add_diff('different types: %s, %s', type(x), type(y))
+   elseif type(x) == 'table' then
+      if not ctx.inspected[x] or not ctx.inspected[y] then
+         ctx.inspected[x] = true
+         ctx.inspected[y] = true
+         if not opts.ignore_mt and getmetatable(x) ~= getmetatable(y) then
+            add_diff('different metatables: %s, %s', getmetatable(x), getmetatable(y))
+         end
+         local inspected_keys = {} -- Set<keys>
+         local depth = #ctx.path + 1
+         for k, v in pairs(x) do
+            inspected_keys[k] = true
+            ctx.path[depth] = k
+            self:assert_deep_equal(v, y[k], opts, ctx)
+         end
+         for k, v in pairs(y) do
+            if not inspected_keys[k] then
+               ctx.path[depth] = k
+               self:assert_deep_equal(x[k], v, opts, ctx)
+            end
+         end
+         ctx.path[depth] = nil
+         ctx.inspected[x] = nil
+         ctx.inspected[y] = nil
       end
-      for k, v in pairs(y) do
-        if not inspected_keys[k] then
-          path[depth] = k
-          self:assert_deep_equal(x[k], v, path, inspected, diffs)
-        end
-      end
-      path[depth] = nil
-      inspected[x] = nil
-      inspected[y] = nil
-    end
-  elseif x ~= y then
-    add_diff('different %s: %s ~= %s', type(x), quote(x), y)
-  end
-  if #path == 0 and #diffs > 0 then
-    error(('%d difference%s found:\n'):format(#diffs, #diffs>1 and 's' or '') .. table.concat(diffs, '\n'))
-  end
+   elseif x ~= y then
+      add_diff('different %s: %s ~= %s', type(x), quote(x), y)
+   end
+   if #ctx.path == 0 and #ctx.diffs > 0 then
+      error(('%d difference%s found:\n'):format(#ctx.diffs, #ctx.diffs>1 and 's' or '') .. table.concat(ctx.diffs, '\n'))
+   end
+end
+
+
+function BaseTest:assert_deep_data_equal(x, y)
+   self:assert_deep_equal(x, y, {ignore_mt=true})
 end
 
 

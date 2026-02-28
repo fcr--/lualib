@@ -15,7 +15,7 @@ do
   if not tested then error 'BaseTest testing framework is broken' end
   if #results ~= 1 then error('expected 1 result, received '..#results) end
   if results[1].method_name ~= 'test_something' then
-    error(('expected method_name == test_something, it was: %s')):format(results[1].method_name)
+    error(('expected method_name == test_something, it was: %s'):format(results[1].method_name))
   end
   if results[1].exception then
     error(('unexpected exception on test_something: %s'):format(results[1].exception))
@@ -159,6 +159,28 @@ function BaseTestTest:test_patch_upvar()
     err:match 'upvar named bar was not found, try with: foo, xyz' and true or
     err:match 'upvar named bar was not found, try with: xyz, foo' and true, true)
 end
+
+
+function BaseTestTest:test_assert_deep_data_equal()
+  local t1 = { a = 1, b = { c = 2 }, c={}, d={} }
+  local t2 = { a = 1, b = { c = 2 }, c={}, d={} }
+
+  setmetatable(t1, { __tostring = function() return "t1" end })
+  setmetatable(t2, { __tostring = function() return "t2" end })
+  setmetatable(t1.b, { __tostring = function() return "b1" end })
+  setmetatable(t2.b, { __tostring = function() return "b2" end })
+  setmetatable(t1.c, {})
+  setmetatable(t2.d, {})
+
+  self:assert_deep_data_equal(t1, t2)
+
+  t2.b.c = 3
+  local ok, err = pcall(self.assert_deep_data_equal, self, t1, t2)
+  self:assert_equal(ok, false)
+  self:assert_pattern(err, "1 difference found")
+  self:assert_pattern(err, "b.c: different number: 2 ~= 3")
+end
+
 
 
 BaseTestTest:run_if_main()

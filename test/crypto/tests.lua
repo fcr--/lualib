@@ -4,8 +4,10 @@ local oo = require 'lualib.oo'
 
 local Tests = oo.class(BaseTest)
   :link_class(require 'test.crypto.aes')
+  :link_class(require 'test.crypto.rc4')
   :link_class(require 'test.crypto.rsa')
   :link_class(require 'test.crypto.sha1')
+  :link_class(require 'test.crypto.sha3')
 
 
 Tests:run_if_main()
