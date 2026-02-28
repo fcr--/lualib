@@ -92,6 +92,9 @@ local function gen_simple_patch(xs, ys, instructions)
             end
         end
     end
+    if equals_count > 0 then
+        res[res_i] = '=' .. equals_count
+    end
     return res
 end
 

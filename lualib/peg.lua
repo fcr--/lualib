@@ -55,11 +55,12 @@ end
 --   "pos": (int 1..#parsed_string) position where the text was parsed.
 --   "len": (int 0..#parsed_string) length for the matched text.
 --   "grammar": Grammar instance that produced the AST node.
+---@param str string
+---@param pos? integer
+---@param context? table
 function Grammar:parse(str, pos, context)
-  if not context then
-    pos = pos or 1
-    context = {last_error={pos=0}, report_errors=true}
-  end
+  if not context then context = {last_error={pos=0}, report_errors=true} end
+  if not pos then pos = pos or 1 end
   local cache = context[pos]
   if not cache then
     cache = {}
@@ -105,6 +106,7 @@ end
 -- `match` first calls the `parse` method to obtain the parsed AST, then that
 -- tree will be converted on a "response tree" built from tags and visitors
 -- responses.
+---@param str string
 function Grammar:match(str)
    local function visit(node, res)
       local grammar = node.grammar
@@ -147,11 +149,17 @@ end
 -- tagnames of children nodes, the whole string being parsed (not just the captured part)
 -- and its AST node.
 function Grammar:tag(tagname, visitor)
+   if self.tagname then
+      error(('tag reassignemnt attempted on %s'):format(tagname))
+   end
    self.tagname = tagname
    self.visitor = visitor
    return self
 end
 function Grammar:mtag(tagname, visitor)
+   if self.tagname then
+      error(('mtag reassignemnt attempted on %s'):format(tagname))
+   end
    self.tagname = tagname
    self.visitor = visitor
    self.multiple_matches = true
@@ -185,6 +193,7 @@ function String:_init(text)
 end
 
 
+---@return integer|false
 function String:parse_impl(str, pos)
   local t = self.text
   if str:sub(pos, pos + #t - 1) == t then return #t end
