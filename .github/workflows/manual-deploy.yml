@@ -1,0 +1,30 @@
+name: Manual Deploy
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if Automated Tests passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Finds the most recent run of 'Automated Tests' on this branch
+          CONCLUSION=$(gh run list --workflow "Automated Tests" --branch ${{ github.ref_name }} --limit 1 --json conclusion -q '.[0].conclusion')
+          
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "Latest tests did not pass (Status: $CONCLUSION). Deployment blocked."
+            exit 1
+          fi
+          echo "Tests passed! Proceeding..."
+
+      - uses: actions/checkout@v2
+
+      - name: Install luarocks
+        run: sudo apt-get update && sudo apt-get install -y luarocks
+
+      - name: Actual Deploy Step
+        env:
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }} 
+        run: luarocks --namespace=fcr-- upload lualib-scm-1.rockspec --api-key=$LUAROCKS_API_KEY
