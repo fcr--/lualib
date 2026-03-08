@@ -22,7 +22,7 @@ jobs:
           echo "Tests passed! Proceeding..."
 
       - name: Install luarocks
-        run: sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install cjson
+        run: sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install dkjson
 
       - name: Actual Deploy Step
         env:
