@@ -27,4 +27,4 @@ jobs:
       - name: Actual Deploy Step
         env:
           LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }} 
-        run: luarocks --namespace=fcr-- upload lualib-scm-1.rockspec --api-key=$LUAROCKS_API_KEY
+        run: luarocks --namespace=fcr-- upload lualib-scm-1.rockspec --api-key=$LUAROCKS_API_KEY --force
