@@ -6,14 +6,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Check if Automated Tests passed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Finds the most recent run of 'Automated Tests' on this branch
-          CONCLUSION=$(gh run list --workflow "Automated Tests" --branch ${{ github.ref_name }} --limit 1 --json conclusion -q '.[0].conclusion')
+          CONCLUSION=$(gh run list --repo ${{ github.repository }} --workflow "Automated Tests" --branch ${{ github.ref_name }} --limit 1 --json conclusion -q '.[0].conclusion')
           
           if [ "$CONCLUSION" != "success" ]; then
             echo "Latest tests did not pass (Status: $CONCLUSION). Deployment blocked."
