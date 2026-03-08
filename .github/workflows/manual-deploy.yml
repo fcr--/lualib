@@ -6,6 +6,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
       - name: Check if Automated Tests passed
         env:
           GH_TOKEN: ${{ github.token }}
@@ -18,8 +20,6 @@ jobs:
             exit 1
           fi
           echo "Tests passed! Proceeding..."
-
-      - uses: actions/checkout@v2
 
       - name: Install luarocks
         run: sudo apt-get update && sudo apt-get install -y luarocks
