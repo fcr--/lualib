@@ -15,14 +15,29 @@ local bxor = bit.bxor
 local rshift = bit.rshift
 local lshift = bit.lshift
 
+---@class (exact) bigint: {[integer]: integer}
+---@field sign -1|0|1  sign for this bigint number
+---@field [integer] integer  list of 1..n atoms, [1] being the least significant
+---@operator add(bigint): bigint
+---@operator div(bigint): bigint
+---@operator mod(bigint): bigint
+---@operator mul(bigint): bigint
+---@operator pow(bigint): bigint
+---@operator sub(bigint): bigint
+---@operator unm: bigint
 local bigint = {}
 local mt = {__index = bigint}
 
+---@type bigint
 local zero = setmetatable({sign=0}, mt)
+---@type bigint
 local one = setmetatable({1, sign=1}, mt)
+---@type bigint
 local two = setmetatable({2, sign=1}, mt)
+---@type bigint
 local tenmillion = setmetatable({38528, 152, sign=1}, mt)
 
+---@type {[bigint]: true}
 local shared_singletons = {
    [zero]=true, [one]=true, [two]=true, [tenmillion]=true
 }
@@ -42,6 +57,8 @@ local empty
 local normalize
 
 
+---@param n number|string
+---@return bigint
 local function new(n)
    if n == 0 or n == '0' then return zero end
    if n == 1 then return one end
@@ -69,7 +86,11 @@ local function new(n)
          -- subtract that crazy stuff:
          for i = start-(start+6-#n)%7, #n-6, 7 do
             local chunk = n:sub(math.max(i, start), i+6)
-            res = res:bmul(tenmillion) + new(tonumber(chunk))
+            local chunkn = tonumber(chunk)
+            if not chunkn then
+               error(('invalid chunk %q'):format(chunk))
+            end
+            res = res:bmul(tenmillion) + new(chunkn)
          end
       elseif base == 16 then
          assert(atombits%4 == 0, 'not supported for this atombits value')
@@ -96,6 +117,9 @@ end
 
 -- CRT: A function that returns an x: 0<=x<min{ns}, such that:
 --    x % ns[i] == as[i] for all 1<=i<=#ns
+---@param ns bigint[]
+---@param as bigint[]
+---@return bigint
 local function crt(ns, as)
    local prod = ns[1]
    for i = 2, #ns do prod = prod * ns[i] end
@@ -110,11 +134,16 @@ local function crt(ns, as)
 end
 
 
+---@param sign -1|0|1
+---@return bigint
 function empty(sign)
    return setmetatable({sign = sign}, mt)
 end
 
 
+---@param fmt "dec"|"hex"|"raw"
+---@param str string
+---@return bigint
 local function fromstring(fmt, str)
    if fmt == 'dec' then
       return new(str)
@@ -151,6 +180,8 @@ end
 
 
 -- mutates x removing trailing zeros and adjusting the sign to 0 if necessary
+---@param x bigint
+---@return bigint
 function normalize(x)
    for i = #x, 1, -1 do
       if x[i] ~= 0 then break end
@@ -162,8 +193,12 @@ end
 
 
 -- returns a number between 0 and 2^bits-1
+---@param bits integer
+---@param safe boolean
+---@return bigint
 local function randombits(bits, safe)
-   local fd = assert(io.open(safe and '/dev/random' or '/dev/urandom', 'rb'))
+   local fd = io.open(safe and '/dev/random' or '/dev/urandom', 'rb')
+   assert(fd, 'failure opening [u]random device')
    local rawdata = fd:read(math.ceil(bits / 8))
    fd:close()
 
@@ -184,7 +219,10 @@ local function randombits(bits, safe)
 end
 
 
--- returns the sign of the first argument:
+-- returned value has the sign of the first argument:
+---@param x bigint
+---@param y bigint
+---@return bigint
 local function raw_add(x, y)
    local res = empty(x.sign)
    local carry = 0
@@ -202,6 +240,9 @@ end
 
 -- precondition: abs(x) >= abs(y)
 -- returns the sign of the first argument
+---@param x bigint
+---@param y bigint
+---@return bigint
 local function raw_sub(x, y)
    local res = empty(x.sign)
    local carry = 0
@@ -216,12 +257,17 @@ end
 
 
 -- simple utility function to shorten the code of several methods
+---@param x bigint
+---@param sign -1|0|1
+---@return bigint
 local function setsign(x, sign)
    x.sign = sign
    return x
 end
 
 
+---@param other bigint
+---@return bigint
 function mt:__add(other)
    if self.sign == 0 then return other end
    if other.sign == 0 then return self end
@@ -236,32 +282,44 @@ function mt:__add(other)
 end
 
 
+---@param other bigint
+---@return bigint
 function mt:__div(other)
    return select(1, self:divmod(other))
 end
 
 
+---@param other bigint
+---@return boolean
 function mt:__eq(other)
    return self:cmp(other) == 0
 end
 
 
+---@param other bigint
+---@return boolean
 function mt:__le(other)
    return self:cmp(other) <= 0
 end
 
 
+---@param other bigint
+---@return boolean
 function mt:__lt(other)
    return self:cmp(other) < 0
 end
 
 
 -- returned sign is always 0 or that of other
+---@param other bigint
+---@return bigint
 function mt:__mod(other)
    return select(2, self:divmod(other))
 end
 
 
+---@param other bigint
+---@return bigint
 function mt:__mul(other)
    if self.sign == 0 or other.sign == 0 then return zero end
    if self == one then return other end
@@ -279,33 +337,42 @@ function mt:__mul(other)
 end
 
 
--- power must be an integer number
-function mt:__pow(_power)  -- luacheck: ignore self
-   error 'TODO: implement'
+---@param power integer
+---@return bigint
+function mt:__pow(power)
+   return self:pow(new(power))
 end
 
 
+---@param other bigint
+---@return bigint
 function mt:__sub(other)
    if rawequal(self, other) then return zero end
    -- controlled mutation (don't try this at home):
    other.sign = -other.sign
    local res = self + other
    other.sign = -other.sign
-   if rawequal(other, res) then return -other end
+   if rawequal(other, res) then
+      -- this happens when self==zero, we have to copy `other` and swap sign
+      return -other
+   end
    return res
 end
 
 
+---@return string
 function mt:__tostring()
    return self:tostring 'hex'
 end
 
 
+---@return bigint
 function mt:__unm()
    return setsign(self:copy(), -self.sign)
 end
 
 
+---@return bigint
 function bigint:abs()
    return setsign(self:copy(), math.abs(self.sign))
 end
@@ -313,6 +380,8 @@ end
 
 -- compare absolute values returning -1, 0 or 1 depending on whether the
 -- absolute value of self is <, = or > than the absolute value of other
+---@param other bigint
+---@return -1|0|1
 function bigint:abscmp(other)
    if #self < #other then return -1 end
    if #self > #other then return 1 end
@@ -325,6 +394,8 @@ function bigint:abscmp(other)
 end
 
 
+---@param other bigint
+---@return bigint
 function bigint:band(other)
    local res = empty(math.max(self.sign, other.sign))
    for i = 1, math.min(#self, #other) do
@@ -335,6 +406,7 @@ end
 
 
 -- Hamming Weight of its absolute number.
+---@return integer
 function bigint:bcount()
    local weights4bit = {[0]=0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4}
    local sum = 0
@@ -349,6 +421,8 @@ end
 
 
 -- Basic Multiplication:
+---@param other bigint
+---@return bigint
 function bigint:bmul(other)
    local res = empty(self.sign * other.sign)
    -- it's already constructed...
@@ -372,6 +446,8 @@ function bigint:bmul(other)
 end
 
 
+---@param other bigint
+---@return bigint
 function bigint:bor(other)
    local T = {[-1] = -1, [0] = 1, 1}
    local res = empty(math.min(T[self.sign], T[other.sign]))
@@ -382,6 +458,8 @@ function bigint:bor(other)
 end
 
 
+---@param other bigint
+---@return bigint
 function bigint:bxor(other)
    local T = {[-1] = -1, [0] = 1, 1}
    local res = empty(T[self.sign] * T[other.sign])
@@ -392,6 +470,8 @@ function bigint:bxor(other)
 end
 
 
+---@param other bigint
+---@return -1|0|1
 function bigint:cmp(other)
    if self.sign < other.sign then return -1 end
    if self.sign > other.sign then return 1 end
@@ -400,6 +480,7 @@ function bigint:cmp(other)
 end
 
 
+---@return bigint
 function bigint:copy()
    local res = empty(self.sign)
    for i = 1, #self do res[i] = self[i] end
@@ -407,6 +488,8 @@ function bigint:copy()
 end
 
 
+---@param div bigint
+---@return bigint, bigint
 function bigint:divmod(div)
    -- Fast version!
    if #div == 1 then
@@ -425,6 +508,8 @@ function bigint:divmod(div)
 end
 
 
+---@param d integer
+---@return bigint, integer
 function bigint:divmod_atom(d)
    local q, r = self:divqr_atom(d)
    -- we must always ensure: ⌊x/d⌋*d + (x%d) == x
@@ -440,6 +525,8 @@ function bigint:divmod_atom(d)
 end
 
 
+---@param div bigint
+---@return bigint, bigint
 function bigint:divqr(div)
    assert(div.sign ~= 0, 'division by zero')
    local rem = empty(1)
@@ -462,6 +549,8 @@ function bigint:divqr(div)
 end
 
 
+---@param d integer
+---@return bigint, integer
 function bigint:divqr_atom(d)
    if d < 0 then
       self.sign = -self.sign
@@ -482,6 +571,7 @@ function bigint:divqr_atom(d)
 end
 
 
+---@return bigint[]
 function bigint:factor()
    assert(self > one, 'number must be > 1')
    local res = {}
@@ -511,6 +601,8 @@ function bigint:factor()
 end
 
 
+---@param other bigint
+---@return bigint, bigint, bigint
 function bigint:gcd(other)
    if self.sign < 0 then self = self:abs() end
    if other.sign < 0 then other = other:abs() end
@@ -528,22 +620,29 @@ end
 
 
 -- Modular Inverse, returns n such that: self*n % mod = 1
+---@param mod bigint
+---@return bigint
 function bigint:invmod(mod)
    return select(2, self:gcd(mod)) % mod
 end
 
 
+---@return boolean
 function bigint:iseven()
    return band(self[1] or 0, 1) == 0
 end
 
 
+---@return boolean
 function bigint:isodd()
    return not self:iseven()
 end
 
 
 -- Karatsuba multiplication:
+---@param other bigint
+---@param karatsuba_threshold integer
+---@return bigint
 function bigint:kmul(other, karatsuba_threshold)
    local nmin = math.min(#self, #other)
    if nmin < karatsuba_threshold then
@@ -568,11 +667,15 @@ function bigint:kmul(other, karatsuba_threshold)
    local p1 = x0:kmul(y0, karatsuba_threshold) - p2 - p0
 
    return setsign(
-   p2:lshift(2*m*atombits) + p1:lshift(m*atombits) + p0,
-   self.sign * other.sign)
+      p2:lshift(2*m*atombits) + p1:lshift(m*atombits) + p0,
+      self.sign * other.sign
+   )
 end
 
 
+---@param other bigint
+---@param karatsuba_threshold integer
+---@return bigint
 function bigint:kmul_unrolled(other, karatsuba_threshold)
    local nmin = math.min(#self, #other)
    if nmin < karatsuba_threshold then
@@ -647,7 +750,16 @@ end
 -- is greater than on kmul_unrolled, meaning less opportunities for reducing
 -- the total number of multiplications performed.
 -- Also, reusing the nodes means that we cannot use the mutable_unsigned_add.
+---@param other bigint
+---@param karatsuba_threshold integer
+---@return bigint
 function bigint:kmul_unrolled2(other, karatsuba_threshold)
+   ---@alias knode {hi: knode?, lo: knode?, n: bigint}
+
+   ---@param n bigint
+   ---@param length integer
+   ---@param depth integer
+   ---@return knode
    local function build_karatsuba_tree(n, length, depth)
       local m = math.floor(length / 2 + 0.6)
       if depth <= 0 then
@@ -669,6 +781,10 @@ function bigint:kmul_unrolled2(other, karatsuba_threshold)
    local tself = build_karatsuba_tree(self, length, depth)
    local tother = build_karatsuba_tree(other, length, depth)
 
+   ---@param node1 knode
+   ---@param node2 knode
+   ---@param len integer
+   ---@return bigint
    local function karatsuba_rec(node1, node2, len)
       if not node1.lo or not node2.lo then
          return node1.n:bmul(node2.n)
@@ -727,6 +843,7 @@ function bigint:kmul_unrolled2(other, karatsuba_threshold)
 end
 
 
+---@return integer
 function bigint:lenbits()
    if self.sign == 0 then return 0 end
    local log2 = (#self - 1) * atombits
@@ -743,6 +860,8 @@ function bigint:lenbits()
 end
 
 
+---@param n integer
+---@return bigint
 function bigint:lshift(n)
    local res = empty(self.sign)
    local natoms, nbits = math.floor(n / atombits), n % atombits
@@ -762,6 +881,7 @@ function bigint:lshift(n)
 end
 
 
+---@param n integer
 function bigint:mutable_lshift(n)
    local natoms, nbits = math.floor(n / atombits), n % atombits
    local len = #self
@@ -785,6 +905,7 @@ function bigint:mutable_lshift(n)
 end
 
 
+---@param other bigint
 function bigint:mutable_unsigned_add(other)
    local carry = 0
    for i = 1, #other do
@@ -803,6 +924,7 @@ end
 
 
 -- mutable equivalent to doing: x + bigint.new(self.sign * atom)
+---@param atom integer
 function bigint:mutable_unsigned_add_atom(atom)
    assert(atom >= 0 and atom < atombase and math.floor(atom) == atom, 'invalid atom')
    local i = 1
@@ -815,6 +937,8 @@ function bigint:mutable_unsigned_add_atom(atom)
 end
 
 
+---@param power bigint
+---@return bigint
 function bigint:pow(power)
    assert(power.sign >= 0, 'pow does not support roots')
    if power.sign == 0 then return one end
@@ -829,6 +953,9 @@ function bigint:pow(power)
 end
 
 
+---@param power bigint
+---@param mod bigint
+---@return bigint
 function bigint:powmod(power, mod)
    if power.sign == 0 then return one end
    if self:abscmp(mod) > 0 then self = self % mod end
@@ -843,6 +970,8 @@ function bigint:powmod(power, mod)
 end
 
 
+---@param n integer
+---@return bigint
 function bigint:rshift(n)
    local res = empty(self.sign)
    local natoms, nbits = math.floor(n / atombits), n % atombits
@@ -853,6 +982,7 @@ function bigint:rshift(n)
 end
 
 
+---@return bigint
 function bigint:sqrt()
    if self.sign == 0 then return zero end
    assert(self.sign >= 0, 'complex numbers are not supported')
@@ -873,6 +1003,7 @@ function bigint:sqrt()
 end
 
 
+---@return integer
 function bigint:tonumber()
    local sum = 0
    for i = #self, 1, -1 do
@@ -882,6 +1013,9 @@ function bigint:tonumber()
 end
 
 
+---@param fmt "hex"|"raw"|"dec"
+---@param opts {prefix: string, minus_sign: string, plus_sign: string, zero: string}
+---@return string
 function bigint:tostring(fmt, opts)
    local tokens
    local needsreverse = false
