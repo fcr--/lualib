@@ -409,7 +409,7 @@ function BaseTest:assert_deep_equal(x, y, opts, ctx)
          ctx.inspected[y] = nil
       end
    elseif x ~= y then
-      add_diff('different %s: %s ~= %s', type(x), quote(x), y)
+      add_diff('different %s: %s ~= %s', type(x), quote(x), quote(y))
    end
    if #ctx.path == 0 and #ctx.diffs > 0 then
       error(('%d difference%s found:\n'):format(#ctx.diffs, #ctx.diffs>1 and 's' or '') .. table.concat(ctx.diffs, '\n'))
