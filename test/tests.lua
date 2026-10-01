@@ -20,6 +20,7 @@ local Tests = oo.class(BaseTest)
   :link_class(require 'test.struct.sorteddict')
   :link_class(require 'test.struct.sslattice')
   :link_class(require 'test.struct.tree23')
+  :link_class(require 'test.string')
   :link_class(require 'test.utf8')
   :link_class(require 'test.uuid')
 
